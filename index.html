@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dodge Zombies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="shortcut icon" href="./logo.png" type="image/x-icon" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- ══ LOGIN SCREEN ══ -->
+    <div id="loginScreen" class="screen active">
+      <div class="login-bg-grid"></div>
+      <div class="login-center">
+        <div class="game-logo">
+          <span class="logo-pixel">DODGE</span>
+          <span class="logo-run">ZOMBIES</span>
+          <div class="logo-tag">500 LEVELS · 10 CHAPTERS</div>
+        </div>
+        <div class="login-box">
+          <div class="login-box-header" id="authTitle">LOGIN</div>
+          <div class="field">
+            <label>USERNAME</label>
+            <input
+              id="usernameInput"
+              type="text"
+              maxlength="16"
+              placeholder="your username"
+              autocomplete="username"
+            />
+          </div>
+          <div class="field">
+            <label>PASSWORD</label>
+            <input
+              id="passwordInput"
+              type="password"
+              maxlength="32"
+              placeholder="your password"
+              autocomplete="current-password"
+            />
+          </div>
+          <button class="btn btn-primary" id="authBtn" onclick="handleAuth()">
+            LOGIN
+          </button>
+          <button
+            class="btn btn-ghost"
+            id="switchBtn"
+            onclick="toggleAuthMode()"
+          >
+            NEW PLAYER? REGISTER
+          </button>
+          <div class="login-msg" id="loginMsg"></div>
+          <div class="login-note">Progress syncs across devices ☁️</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ WORLD MAP ══ -->
+    <div id="mapScreen" class="screen">
+      <div class="map-topbar">
+        <div class="map-title">🗺 CHAPTER SELECT</div>
+        <div class="map-player">
+          <span class="player-tag">👤 <span id="playerName"></span></span>
+          <span class="star-tag">⭐ <span id="totalStars">0</span>/500</span>
+          <span class="lives-tag" id="livesDisplay">❤️❤️❤️</span>
+          <span
+            class="timer-tag"
+            id="lifeTimerDisplay"
+            style="display: none"
+          ></span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">LOGOUT</button>
+      </div>
+      <div class="worlds-grid" id="worldsGrid"></div>
+    </div>
+
+    <!-- ══ LEVEL SELECT ══ -->
+    <div id="levelScreen" class="screen">
+      <div class="level-topbar">
+        <button class="back-btn" onclick="showMap()">← BACK</button>
+        <div class="level-world-title" id="worldTitle">CHAPTER 1</div>
+        <div class="level-lives" id="levelLivesDisplay">❤️❤️❤️</div>
+      </div>
+      <div class="level-subtitle" id="worldSubtitle"></div>
+      <div class="level-grid-wrap">
+        <div class="level-grid" id="levelGrid"></div>
+      </div>
+    </div>
+
+    <!-- ══ GAME SCREEN ══ -->
+    <div id="gameScreen" class="screen game-fullscreen">
+      <div id="gameWrapper">
+        <div id="hud">
+          <span class="hud-chapter" id="hudChapter">CH 1</span>
+          <span class="hud-level" id="hudLevel">LVL 1</span>
+          <span class="hud-lives" id="hudLives">❤️❤️❤️</span>
+          <span class="hud-score">⭐ <span id="hudScore">0</span></span>
+          <span class="hud-coins">🪙 <span id="hudCoins">0</span></span>
+          <span class="hud-hint">ESC=PAUSE</span>
+        </div>
+        <canvas id="c"></canvas>
+      </div>
+
+      <!-- Mobile controls -->
+      <div class="mobile-controls">
+        <div class="mc-left">
+          <button
+            class="mc-btn"
+            id="mcLeft"
+            ontouchstart="mcPress('left')"
+            ontouchend="mcRelease('left')"
+          >
+            ◀
+          </button>
+          <button
+            class="mc-btn"
+            id="mcRight"
+            ontouchstart="mcPress('right')"
+            ontouchend="mcRelease('right')"
+          >
+            ▶
+          </button>
+        </div>
+        <div class="mc-right">
+          <button class="mc-btn mc-jump" ontouchstart="mcJump()">▲</button>
+        </div>
+      </div>
+
+      <!-- Overlays -->
+      <div class="game-overlay" id="pauseOverlay">
+        <div class="overlay-box">
+          <div class="overlay-title">PAUSED</div>
+          <button class="btn btn-primary" onclick="resumeGame()">
+            ▶ RESUME
+          </button>
+          <button class="btn btn-ghost" onclick="quitToMap()">🗺 MAP</button>
+        </div>
+      </div>
+      <div class="game-overlay" id="dieOverlay">
+        <div class="overlay-box overlay-die">
+          <div class="overlay-title" id="dieTitle">YOU DIED</div>
+          <div class="overlay-msg" id="dieMsg"></div>
+          <div class="overlay-lives-wait" id="livesWait" style="display: none">
+            <div class="wait-label">NEXT LIFE IN</div>
+            <div class="wait-timer" id="waitCountdown">2:00</div>
+          </div>
+          <button class="btn btn-primary" id="retryBtn" onclick="retryLevel()">
+            ↺ RETRY
+          </button>
+          <button class="btn btn-ghost" onclick="quitToMap()">🗺 MAP</button>
+        </div>
+      </div>
+      <div class="game-overlay" id="winOverlay">
+        <div class="overlay-box overlay-win">
+          <div class="overlay-title">✨ CLEAR!</div>
+          <div class="overlay-msg" id="winMsg"></div>
+          <div class="overlay-score" id="winScore"></div>
+          <button class="btn btn-primary" id="nextBtn" onclick="nextLevel()">
+            NEXT →
+          </button>
+          <button class="btn btn-ghost" onclick="quitToMap()">🗺 MAP</button>
+        </div>
+      </div>
+      <div class="game-overlay" id="noLivesOverlay">
+        <div class="overlay-box overlay-die">
+          <div class="overlay-title">NO LIVES!</div>
+          <div class="overlay-msg">Wait for a life to regenerate</div>
+          <div class="overlay-lives-wait">
+            <div class="wait-label">NEXT LIFE IN</div>
+            <div class="wait-timer" id="noLivesCountdown">2:00</div>
+          </div>
+          <button class="btn btn-ghost" onclick="quitToMap()">🗺 MAP</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
