@@ -8,132 +8,137 @@
 "use strict";
 
 // ─────────────────────────────────────────────────────────────
-//  CLOUD SAVE  (Anthropic API as persistent key-value store)
-//  We use claude-sonnet-4-20250514 with a deterministic system
-//  prompt to serialize/deserialize player data as JSON
+//  SUPABASE CONFIG
 // ─────────────────────────────────────────────────────────────
-const CLOUD = {
-  _cache: {}, // username → saveData
-  _dirty: false,
+const SUPA_URL = "https://oyxymvhfafbegqnwvmpz.supabase.co";
+const SUPA_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95eHltdmhmYWZiZWdxbnd2bXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MTAxMzIsImV4cCI6MjA4ODk4NjEzMn0.8IdZBZOR4Kt-TvDpBSmztU4wJpQNs7mGq8CIGuTNIsI";
 
-  // Encode save to a compact string
-  encode(data) {
-    return JSON.stringify(data);
+const SUPA = {
+  headers: {
+    "Content-Type": "application/json",
+    apikey: SUPA_KEY,
+    Authorization: "Bearer " + SUPA_KEY,
   },
-  decode(str) {
+
+  async getUser(username) {
     try {
-      return JSON.parse(str);
+      const res = await fetch(
+        `${SUPA_URL}/rest/v1/saves?username=eq.${encodeURIComponent(username)}&select=*`,
+        { headers: this.headers },
+      );
+      const rows = await res.json();
+      return rows && rows.length ? rows[0] : null;
     } catch {
       return null;
     }
   },
 
-  // Load save from localStorage (fast path) + mark for cloud sync
-  loadLocal(username) {
+  async createUser(username, password) {
     try {
-      const raw = localStorage.getItem("pr500_" + username);
-      return raw ? this.decode(raw) : null;
-    } catch {
-      return null;
-    }
-  },
-
-  saveLocal(username, data) {
-    try {
-      localStorage.setItem("pr500_" + username, this.encode(data));
-    } catch (e) {
-      console.warn("localStorage save failed", e);
-    }
-  },
-
-  // Sync to/from Anthropic API using a "memory" conversation trick:
-  // We store the save data in the assistant message of a cached convo.
-  // On load we ask the model to return our saved data verbatim.
-  async syncToCloud(username, data) {
-    const payload = this.encode(data);
-    try {
-      await fetch("https://api.anthropic.com/v1/messages", {
+      await fetch(`${SUPA_URL}/rest/v1/saves`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...this.headers, Prefer: "return=minimal" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 10,
-          system:
-            "You are a game save database. When the user says SAVE:[data], reply only: SAVED. When the user says LOAD:[username], reply only with the last saved data for that username, or NULL if none.",
-          messages: [{ role: "user", content: `SAVE:${username}:${payload}` }],
+          username,
+          password,
+          progress: {},
+          lives: 3,
+          last_life_lost_at: [],
+          updated_at: new Date().toISOString(),
         }),
       });
     } catch (e) {
-      /* silent fail – localStorage is the fallback */
+      console.error("createUser failed", e);
     }
   },
 
-  async loadFromCloud(username) {
+  async updateUser(username, fields) {
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
-          system:
-            "You are a game save database. When the user says SAVE:[data], reply only: SAVED. When the user says LOAD:[username], reply only with the last saved data for that username, or NULL if none.",
-          messages: [{ role: "user", content: `LOAD:${username}` }],
-        }),
-      });
-      const json = await res.json();
-      const text = json?.content?.[0]?.text || "";
-      if (text && text !== "NULL") return this.decode(text);
+      await fetch(
+        `${SUPA_URL}/rest/v1/saves?username=eq.${encodeURIComponent(username)}`,
+        {
+          method: "PATCH",
+          headers: { ...this.headers, Prefer: "return=minimal" },
+          body: JSON.stringify({
+            ...fields,
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
     } catch (e) {
-      /* silent fail */
+      console.error("updateUser failed", e);
     }
-    return null;
   },
 };
 
 // ─────────────────────────────────────────────────────────────
-//  LOCAL AUTH + SAVE  (localStorage is primary storage)
-//  Schema: { users: { name: { pass, progress: {0..499: score},
-//             lives: 3, lastLifeLostAt: timestamp[] } } }
+//  DB  — in-memory cache backed by Supabase
+//  All reads/writes go through the local cache; Supabase is
+//  synced asynchronously so the game never waits on network.
 // ─────────────────────────────────────────────────────────────
 const DB = {
-  _d: {},
-  load() {
-    try {
-      const s = localStorage.getItem("pr500");
-      if (s) this._d = JSON.parse(s);
-    } catch {
-      this._d = {};
+  _cache: {}, // username → { password, progress, lives, lastLifeLostAt }
+
+  // Called on login — loads user from Supabase into cache
+  async loadUser(username) {
+    // Try Supabase first
+    const row = await SUPA.getUser(username);
+    if (row) {
+      this._cache[username] = {
+        password: row.password,
+        progress: row.progress || {},
+        lives: row.lives ?? 3,
+        lastLifeLostAt: row.last_life_lost_at || [],
+      };
+      return this._cache[username];
     }
-    if (!this._d.users) this._d.users = {};
+    return null;
   },
-  flush() {
-    try {
-      localStorage.setItem("pr500", JSON.stringify(this._d));
-    } catch {}
+
+  // Push current cache state to Supabase (async, fire-and-forget)
+  _sync(username) {
+    const u = this._cache[username];
+    if (!u) return;
+    SUPA.updateUser(username, {
+      progress: u.progress,
+      lives: u.lives,
+      last_life_lost_at: u.lastLifeLostAt,
+    });
   },
+
   user(n) {
-    return this._d.users[n] || null;
+    return this._cache[n] || null;
   },
-  create(n, p) {
-    this._d.users[n] = { pass: p, progress: {}, lives: 3, lastLifeLostAt: [] };
-    this.flush();
+
+  async create(username, password) {
+    this._cache[username] = {
+      password,
+      progress: {},
+      lives: 3,
+      lastLifeLostAt: [],
+    };
+    await SUPA.createUser(username, password);
   },
+
   getProgress(n) {
     return (this.user(n) || {}).progress || {};
   },
+
   saveProgress(n, idx, sc) {
     const u = this.user(n);
     if (!u) return;
     if (!(idx in u.progress) || u.progress[idx] < sc) u.progress[idx] = sc;
-    this.flush();
+    this._sync(n);
   },
+
   getLives(n) {
     const u = this.user(n);
     if (!u) return 0;
     this._regenLives(n);
     return u.lives;
   },
+
   loseLife(n) {
     const u = this.user(n);
     if (!u) return;
@@ -141,53 +146,39 @@ const DB = {
     if (u.lives > 0) {
       u.lives--;
       u.lastLifeLostAt.push(Date.now());
-      this.flush();
+      this._sync(n);
     }
   },
-  addLife(n) {
-    const u = this.user(n);
-    if (!u) return;
-    if (u.lives < MAX_LIVES) {
-      u.lives = Math.min(MAX_LIVES, u.lives + 1);
-      this.flush();
-    }
-  },
-  // Regenerate lives based on elapsed time (1 per 2 min)
+
   _regenLives(n) {
     const u = this.user(n);
     if (!u) return;
     const now = Date.now();
     const REGEN_MS = REGEN_MINUTES * 60 * 1000;
-    // Remove timestamps older than needed
     u.lastLifeLostAt = u.lastLifeLostAt.filter(
       (t) => now - t < REGEN_MS * MAX_LIVES,
     );
-    // For each timestamp, check if 2 min has passed → remove & add life
     const recovered = [];
     for (let i = u.lastLifeLostAt.length - 1; i >= 0; i--) {
-      if (now - u.lastLifeLostAt[i] >= REGEN_MS) {
-        recovered.push(i);
-      }
+      if (now - u.lastLifeLostAt[i] >= REGEN_MS) recovered.push(i);
     }
     for (const i of recovered) {
       u.lastLifeLostAt.splice(i, 1);
       if (u.lives < MAX_LIVES) u.lives++;
     }
-    if (recovered.length) this.flush();
+    if (recovered.length) this._sync(n);
   },
+
   nextLifeIn(n) {
-    // Returns ms until next life, or 0 if already at max
     const u = this.user(n);
     if (!u) return 0;
     this._regenLives(n);
     if (u.lives >= MAX_LIVES) return 0;
     if (!u.lastLifeLostAt.length) return 0;
     const REGEN_MS = REGEN_MINUTES * 60 * 1000;
-    const oldest = Math.min(...u.lastLifeLostAt);
-    return Math.max(0, REGEN_MS - (Date.now() - oldest));
+    return Math.max(0, REGEN_MS - (Date.now() - Math.min(...u.lastLifeLostAt)));
   },
 };
-DB.load();
 
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTS
@@ -482,13 +473,14 @@ function toggleAuthMode() {
   document.getElementById("loginMsg").textContent = "";
 }
 
-function handleAuth() {
+async function handleAuth() {
   const name = document
     .getElementById("usernameInput")
     .value.trim()
     .toLowerCase();
   const pass = document.getElementById("passwordInput").value;
   const msg = document.getElementById("loginMsg");
+  const btn = document.getElementById("authBtn");
   msg.style.color = "var(--red)";
   if (!name || !pass) {
     msg.textContent = "FILL IN ALL FIELDS!";
@@ -499,27 +491,41 @@ function handleAuth() {
     return;
   }
 
+  btn.textContent = "...";
+  btn.disabled = true;
+
   if (authMode === "register") {
-    if (DB.user(name)) {
+    // Check if username already exists
+    const existing = await SUPA.getUser(name);
+    if (existing) {
       msg.textContent = "USERNAME TAKEN!";
+      btn.textContent = "CREATE ACCOUNT";
+      btn.disabled = false;
       return;
     }
     if (pass.length < 3) {
       msg.textContent = "PASSWORD TOO SHORT (min 3)";
+      btn.textContent = "CREATE ACCOUNT";
+      btn.disabled = false;
       return;
     }
-    DB.create(name, pass);
+    await DB.create(name, pass);
     msg.style.color = "var(--green)";
     msg.textContent = "ACCOUNT CREATED! ✓";
     setTimeout(() => loginAs(name), 700);
   } else {
-    const u = DB.user(name);
-    if (!u || u.pass !== pass) {
+    const row = await DB.loadUser(name);
+    if (!row || row.password !== pass) {
       msg.textContent = "WRONG USERNAME OR PASSWORD";
+      btn.textContent = "LOGIN";
+      btn.disabled = false;
       return;
     }
     loginAs(name);
   }
+
+  btn.textContent = authMode === "login" ? "LOGIN" : "CREATE ACCOUNT";
+  btn.disabled = false;
 }
 
 function loginAs(name) {
