@@ -242,14 +242,19 @@ body {
   border-color: var(--gold);
 }
 
+/* Login buttons — full width matching input fields */
 .px-btn {
   font-family: var(--px);
   font-size: 9px;
-  padding: 12px 18px;
+  padding: 14px 18px;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: all 0.1s;
+  transition: all 0.15s;
   letter-spacing: 1px;
+  margin: 0 auto;
+  width: 100%;
+  text-align: center;
+  display: block;
 }
 .px-btn:active {
   transform: translateY(1px);
@@ -258,9 +263,11 @@ body {
   background: var(--green);
   color: #fff;
   border-color: #2d7d2d;
+  box-shadow: 0 4px 16px rgba(74, 176, 74, 0.4);
 }
 .px-btn-primary:hover {
   background: #5ccc5c;
+  box-shadow: 0 6px 22px rgba(74, 176, 74, 0.6);
 }
 .px-btn-ghost {
   background: transparent;
@@ -282,6 +289,22 @@ body {
   font-size: 7px;
   color: var(--muted);
   text-align: center;
+}
+.px-btn-forgot {
+  font-family: var(--px);
+  font-size: 7px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  letter-spacing: 1px;
+  padding: 2px;
+  transition: color 0.15s;
+}
+.px-btn-forgot:hover {
+  color: var(--gold);
 }
 
 /* ══════════════════════════════════════════
@@ -372,6 +395,18 @@ body {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 4px;
+}
+.char-coins {
+  font-family: var(--mod);
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--m-gold);
+  background: rgba(255, 210, 63, 0.12);
+  border: 1px solid rgba(255, 210, 63, 0.3);
+  padding: 5px 16px;
+  border-radius: 50px;
+  margin-top: 8px;
+  display: inline-block;
 }
 
 .char-grid {
@@ -474,19 +509,42 @@ body {
 .char-locked {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.72);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  font-size: 24px;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
-.char-locked span {
-  font-size: 9px;
+.char-locked:hover {
+  background: rgba(0, 0, 0, 0.55);
+}
+.char-locked-btn {
+  background: linear-gradient(135deg, #ff6b35, #ff3870);
+  color: #fff;
   font-family: var(--mod);
-  color: rgba(255, 255, 255, 0.5);
+  font-weight: 900;
+  font-size: 13px;
+  padding: 8px 18px;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 16px rgba(255, 107, 53, 0.5);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.char-locked-label {
+  font-size: 10px;
+  font-family: var(--mod);
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 /* ══════════════════════════════════════════
@@ -808,7 +866,111 @@ body {
 }
 
 /* ══════════════════════════════════════════
-   GAME SCREEN
+   ROTATE PROMPT (portrait mobile only)
+══════════════════════════════════════════ */
+#rotatePrompt {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #06060f;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.rotate-inner {
+  text-align: center;
+}
+.rotate-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: spin 2s linear infinite;
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: rotate(90deg);
+  }
+}
+.rotate-text {
+  font-family: "Press Start 2P", monospace;
+  font-size: 14px;
+  color: #ffd700;
+  margin-bottom: 8px;
+}
+.rotate-sub {
+  font-family: "Nunito", sans-serif;
+  font-size: 14px;
+  color: #6060a0;
+}
+
+/* Show rotate prompt on portrait mobile */
+@media (pointer: coarse) and (orientation: portrait) {
+  #rotatePrompt {
+    display: flex;
+  }
+  .screen {
+    display: none !important;
+  }
+  .screen.active {
+    display: none !important;
+  }
+}
+
+/* ══════════════════════════════════════════
+   PASSWORD TOGGLE
+══════════════════════════════════════════ */
+.pass-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pass-wrap input {
+  width: 100%;
+  padding-right: 36px;
+}
+.pass-toggle {
+  position: absolute;
+  right: 6px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.pass-toggle:hover {
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════
+   FIXED-WIDTH BUTTONS
+══════════════════════════════════════════ */
+.px-btn {
+  width: 280px !important;
+  max-width: 100%;
+  text-align: center;
+}
+.modern-btn {
+  width: 220px !important;
+  max-width: 90%;
+  text-align: center;
+}
+.full-btn {
+  width: 100% !important;
+  max-width: 400px;
+}
+
+/* ══════════════════════════════════════════
+   GAME SCREEN — true fullscreen on desktop
 ══════════════════════════════════════════ */
 #gameScreen {
   background: #000;
@@ -862,61 +1024,243 @@ body {
   letter-spacing: 2px;
 }
 .hud-weapon {
-  font-size: 16px !important;
+  font-size: 18px !important;
 }
 
 #c {
   display: block;
 }
 
-/* Mobile controls */
+/* Desktop: fill full viewport */
+@media (pointer: fine) {
+  #gameScreen {
+    background: #000;
+  }
+  #gameWrapper {
+    width: 100vw !important;
+  }
+  #gameWrapper #hud {
+    width: 100%;
+  }
+  #c {
+    width: 100vw !important;
+    height: calc(100vh - 36px) !important;
+  }
+}
+
+/* ══════════════════════════════════════════
+   MOBILE CONTROLS — landscape layout
+   Left: ▲ on top, ◀ ▶ below
+   Right: weapon button (big, dynamic icon)
+══════════════════════════════════════════ */
 .mobile-controls {
   display: none;
   position: absolute;
-  bottom: 12px;
+  bottom: 0;
   left: 0;
   right: 0;
-  padding: 0 16px;
+  height: 110px;
+  padding: 10px 16px;
   justify-content: space-between;
   align-items: flex-end;
   pointer-events: none;
-  z-index: 5;
+  z-index: 10;
 }
 @media (pointer: coarse) {
   .mobile-controls {
     display: flex;
   }
 }
+
 .mc-left {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   pointer-events: all;
+}
+.mc-lr {
+  display: flex;
+  gap: 8px;
 }
 .mc-right {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
   pointer-events: all;
 }
+
 .mc-btn {
-  width: 58px;
-  height: 58px;
+  width: 54px;
+  height: 54px;
   background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.22);
   border-radius: 50%;
   color: #fff;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
 }
+.mc-btn:active {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(0.93);
+}
+
+.mc-up {
+  width: 50px;
+  height: 50px;
+  font-size: 18px;
+}
+
+/* Weapon button — big, shows current weapon icon */
 .mc-atk {
-  background: rgba(255, 107, 53, 0.25);
-  border-color: var(--m-accent);
-  font-size: 22px;
+  width: 72px;
+  height: 72px;
+  background: rgba(255, 107, 53, 0.3);
+  border: 3px solid var(--m-accent);
+  border-radius: 50%;
+  font-size: 30px;
+  box-shadow: 0 0 16px rgba(255, 107, 53, 0.4);
 }
-.mc-jump {
-  background: rgba(6, 214, 160, 0.2);
-  border-color: var(--m-green);
+.mc-atk:active {
+  background: rgba(255, 107, 53, 0.55);
+}
+
+/* ══════════════════════════════════════════
+   CHARACTER SELECT LAYOUT WITH PREVIEW
+══════════════════════════════════════════ */
+.char-select-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.char-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  align-content: start;
+}
+
+/* Preview panel */
+.char-preview-panel {
+  width: 200px;
+  min-width: 180px;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px;
+  gap: 8px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .char-select-layout {
+    flex-direction: column;
+  }
+  .char-preview-panel {
+    width: 100%;
+    min-width: unset;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .char-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.preview-title {
+  font-family: var(--mod);
+  font-weight: 900;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#charPreviewCanvas {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  image-rendering: auto;
+}
+.preview-name {
+  font-family: var(--title);
   font-size: 22px;
+  color: #fff;
+  letter-spacing: 2px;
+}
+.preview-stats {
+  font-family: var(--mod);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.preview-weapon-label {
+  font-family: var(--mod);
+  font-weight: 900;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 2px;
+  margin-top: 4px;
+  align-self: flex-start;
+}
+.weapon-grid-small {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.weapon-card-small {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s;
+}
+.weapon-card-small:hover {
+  border-color: var(--m-gold);
+  background: rgba(255, 255, 255, 0.1);
+}
+.weapon-card-small.selected {
+  border-color: var(--m-accent);
+  background: rgba(255, 107, 53, 0.15);
+}
+.weapon-card-small .wcs-icon {
+  font-size: 20px;
+}
+.weapon-card-small .wcs-info {
+  flex: 1;
+}
+.weapon-card-small .wcs-name {
+  font-family: var(--mod);
+  font-weight: 900;
+  font-size: 11px;
+  color: #fff;
+}
+.weapon-card-small .wcs-dmg {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 /* ══════════════════════════════════════════

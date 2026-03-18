@@ -4,17 +4,182 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>PixelRun Z</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap"
       rel="stylesheet"
     />
+    <link rel="shortcut icon" href="./logo.png" type="image/x-icon" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- INSTRUCTIONS (first time only) -->
+    <div
+      id="instructionsOverlay"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.92);
+        z-index: 998;
+        align-items: center;
+        justify-content: center;
+        font-family: &quot;Nunito&quot;, sans-serif;
+      "
+    >
+      <div
+        style="
+          background: #0f0c29;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 20px;
+          padding: 28px 24px;
+          max-width: min(460px, 92vw);
+          text-align: center;
+        "
+      >
+        <div style="font-size: 28px; margin-bottom: 6px">⚡ HOW TO PLAY</div>
+        <div
+          style="
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 20px;
+          "
+        >
+          Quick guide for new players
+        </div>
+        <div
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+          "
+        >
+          <div
+            style="
+              background: rgba(255, 255, 255, 0.05);
+              border-radius: 10px;
+              padding: 12px;
+            "
+          >
+            <div style="font-size: 18px; margin-bottom: 4px">🏃 MOVE</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6)">
+              Arrow Keys or A / D
+            </div>
+          </div>
+          <div
+            style="
+              background: rgba(255, 255, 255, 0.05);
+              border-radius: 10px;
+              padding: 12px;
+            "
+          >
+            <div style="font-size: 18px; margin-bottom: 4px">🦘 JUMP</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6)">
+              Space / Up / W
+            </div>
+          </div>
+          <div
+            style="
+              background: rgba(255, 107, 53, 0.15);
+              border: 1px solid rgba(255, 107, 53, 0.3);
+              border-radius: 10px;
+              padding: 12px;
+            "
+          >
+            <div style="font-size: 18px; margin-bottom: 4px">⚔️ ATTACK</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6)">
+              Press <b style="color: #ff6b35">J</b> or
+              <b style="color: #ff6b35">Z</b>
+            </div>
+          </div>
+          <div
+            style="
+              background: rgba(255, 255, 255, 0.05);
+              border-radius: 10px;
+              padding: 12px;
+            "
+          >
+            <div style="font-size: 18px; margin-bottom: 4px">👟 STOMP</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6)">
+              Jump on top of zombies
+            </div>
+          </div>
+          <div
+            style="
+              background: rgba(255, 210, 63, 0.12);
+              border: 1px solid rgba(255, 210, 63, 0.25);
+              border-radius: 10px;
+              padding: 12px;
+            "
+          >
+            <div style="font-size: 18px; margin-bottom: 4px">🪙 COINS</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6)">
+              Collect Z-coins for score
+            </div>
+          </div>
+          <div
+            style="
+              background: rgba(6, 214, 160, 0.12);
+              border: 1px solid rgba(6, 214, 160, 0.25);
+              border-radius: 10px;
+              padding: 12px;
+            "
+          >
+            <div style="font-size: 18px; margin-bottom: 4px">🚩 EXIT</div>
+            <div style="font-size: 12px; color: rgba(255, 255, 255, 0.6)">
+              Reach the flag to win. Complete objective first if locked!
+            </div>
+          </div>
+        </div>
+        <div
+          style="
+            background: rgba(255, 68, 68, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+          "
+        >
+          💡 <b style="color: #fff">Tip:</b> Chain kills for a COMBO bonus!
+          Every 10th level has a 👑 BOSS.
+        </div>
+        <button
+          onclick="closeInstructions()"
+          style="
+            padding: 12px 36px;
+            background: linear-gradient(135deg, #ff6b35, #ff4040);
+            border: none;
+            border-radius: 50px;
+            color: #fff;
+            font-family: &quot;Nunito&quot;, sans-serif;
+            font-weight: 900;
+            font-size: 15px;
+            cursor: pointer;
+            letter-spacing: 1px;
+          "
+        >
+          LET'S GO! 🔥
+        </button>
+      </div>
+    </div>
+
+    <!-- ROTATE PROMPT (shown on portrait mobile) -->
+    <div id="rotatePrompt">
+      <div class="rotate-inner">
+        <div class="rotate-icon">📱➡️🔄</div>
+        <div class="rotate-text">ROTATE YOUR DEVICE</div>
+        <div class="rotate-sub">This game plays in landscape mode</div>
+      </div>
+    </div>
+
     <!-- LOGIN (pixel) -->
     <div id="loginScreen" class="screen active">
       <div class="login-bg-grid"></div>
@@ -31,8 +196,8 @@
         <div class="login-box">
           <div class="login-box-header" id="authTitle">LOGIN</div>
           <div class="field">
-            <label>USERNAME</label
-            ><input
+            <label>USERNAME</label>
+            <input
               id="usernameInput"
               type="text"
               maxlength="16"
@@ -41,14 +206,25 @@
             />
           </div>
           <div class="field">
-            <label>PASSWORD</label
-            ><input
-              id="passwordInput"
-              type="password"
-              maxlength="32"
-              placeholder="enter password"
-              autocomplete="current-password"
-            />
+            <label>PASSWORD</label>
+            <div class="pass-wrap">
+              <input
+                id="passwordInput"
+                type="password"
+                maxlength="32"
+                placeholder="enter password"
+                autocomplete="current-password"
+              />
+              <button
+                class="pass-toggle"
+                id="passToggle"
+                onclick="togglePassword()"
+                type="button"
+                tabindex="-1"
+              >
+                👁
+              </button>
+            </div>
           </div>
           <button
             class="px-btn px-btn-primary"
@@ -65,22 +241,35 @@
             NEW PLAYER? REGISTER
           </button>
           <div class="login-msg" id="loginMsg"></div>
+          <button class="px-btn-forgot" onclick="showForgotPassword()">
+            Forgot password?
+          </button>
           <div class="login-note">☁️ Progress syncs across devices</div>
         </div>
       </div>
     </div>
 
-    <!-- CHARACTER SELECT (modern) -->
+    <!-- CHARACTER SELECT -->
     <div id="charScreen" class="screen modern-screen">
       <div class="modern-bg"></div>
       <div class="char-header">
         <div class="char-title">CHOOSE YOUR HERO</div>
         <div class="char-sub">Select a character and weapon to begin</div>
+        <div class="char-coins" id="charCoinBalance">🪙 0 coins</div>
       </div>
-      <div class="char-grid" id="charGrid"></div>
-      <div class="weapon-section">
-        <div class="section-label">WEAPON</div>
-        <div class="weapon-grid" id="weaponGrid"></div>
+      <div class="char-select-layout">
+        <!-- Character cards -->
+        <div class="char-grid" id="charGrid"></div>
+        <!-- Live preview panel -->
+        <div class="char-preview-panel">
+          <div class="preview-title">PREVIEW</div>
+          <canvas id="charPreviewCanvas" width="120" height="160"></canvas>
+          <div class="preview-name" id="previewName">JAKE</div>
+          <div class="preview-stats" id="previewStats"></div>
+          <!-- Weapon select inline -->
+          <div class="preview-weapon-label">WEAPON</div>
+          <div class="weapon-grid-small" id="weaponGrid"></div>
+        </div>
       </div>
       <button
         class="modern-btn modern-btn-primary full-btn"
@@ -91,7 +280,7 @@
       </button>
     </div>
 
-    <!-- WORLD MAP (modern) -->
+    <!-- WORLD MAP -->
     <div id="mapScreen" class="screen modern-screen">
       <div class="modern-bg"></div>
       <div class="map-topbar">
@@ -106,6 +295,7 @@
           <div class="map-username" id="playerName"></div>
           <div class="map-stats">
             <span>⭐ <span id="totalStars">0</span>/500</span>
+            <span style="color: #ffd23f">🪙 <span id="mapCoins">0</span></span>
             <span class="lives-tag" id="livesDisplay">❤️❤️❤️</span>
           </div>
         </div>
@@ -114,6 +304,13 @@
           id="lifeTimerDisplay"
           style="display: none"
         ></div>
+        <button
+          class="icon-btn"
+          onclick="showLeaderboard(currentLvlIdx || 0)"
+          title="Leaderboard"
+        >
+          🏆
+        </button>
         <button class="icon-btn" onclick="logout()" title="Logout">🚪</button>
       </div>
       <div class="map-scroll">
@@ -121,13 +318,20 @@
       </div>
     </div>
 
-    <!-- LEVEL SELECT (modern) -->
+    <!-- LEVEL SELECT -->
     <div id="levelScreen" class="screen modern-screen">
       <div class="modern-bg"></div>
       <div class="level-topbar">
         <button class="icon-btn" onclick="showMap()">←</button>
         <div class="level-world-title" id="worldTitle"></div>
         <div class="level-lives" id="levelLivesDisplay">❤️❤️❤️</div>
+        <button
+          class="icon-btn"
+          onclick="showChapterLeaderboard()"
+          title="Leaderboard"
+        >
+          🏆
+        </button>
       </div>
       <div class="level-subtitle" id="worldSubtitle"></div>
       <div class="level-grid-wrap">
@@ -156,29 +360,37 @@
         <canvas id="c"></canvas>
       </div>
 
-      <div class="mobile-controls">
+      <!-- Mobile controls: LEFT = movement, RIGHT = weapon + jump -->
+      <div class="mobile-controls" id="mobileControls">
         <div class="mc-left">
-          <button
-            class="mc-btn"
-            ontouchstart="mcPress('left')"
-            ontouchend="mcRelease('left')"
-          >
-            ◀
+          <button class="mc-btn mc-up" ontouchstart="mcJump()" ontouchend="">
+            ▲
           </button>
-          <button
-            class="mc-btn"
-            ontouchstart="mcPress('right')"
-            ontouchend="mcRelease('right')"
-          >
-            ▶
-          </button>
+          <div class="mc-lr">
+            <button
+              class="mc-btn mc-left-btn"
+              ontouchstart="mcPress('left')"
+              ontouchend="mcRelease('left')"
+            >
+              ◀
+            </button>
+            <button
+              class="mc-btn mc-right-btn"
+              ontouchstart="mcPress('right')"
+              ontouchend="mcRelease('right')"
+            >
+              ▶
+            </button>
+          </div>
         </div>
         <div class="mc-right">
-          <button class="mc-btn mc-atk" ontouchstart="mcAttack()">⚔️</button>
-          <button class="mc-btn mc-jump" ontouchstart="mcJump()">▲</button>
+          <button class="mc-btn mc-atk" id="mcAtkBtn" ontouchstart="mcAttack()">
+            🗡️
+          </button>
         </div>
       </div>
 
+      <!-- Overlays -->
       <div class="game-overlay" id="pauseOverlay">
         <div class="overlay-box">
           <div class="overlay-title">PAUSED</div>
