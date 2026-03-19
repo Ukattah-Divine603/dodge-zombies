@@ -97,7 +97,7 @@ const LOCAL = {
   },
 };
 
-const MAX_LIVES = 3,
+const MAX_LIVES = 5,
   REGEN_MIN = 2;
 const DB = {
   _c: {},
@@ -241,7 +241,8 @@ const DB = {
     this._regen(u);
     if (d.lives > 0) {
       d.lives--;
-      d.lla.push(Date.now());
+      // Only track up to MAX_LIVES timestamps
+      if (d.lla.length < MAX_LIVES) d.lla.push(Date.now());
       this._sync(u);
     }
   },
@@ -251,15 +252,20 @@ const DB = {
     if (!d) return;
     const now = Date.now(),
       MS = REGEN_MIN * 60000;
-    d.lla = d.lla.filter((t) => now - t < MS * MAX_LIVES);
-    const rec = [];
-    for (let i = d.lla.length - 1; i >= 0; i--)
-      if (now - d.lla[i] >= MS) rec.push(i);
-    for (const i of rec) {
-      d.lla.splice(i, 1);
-      if (d.lives < MAX_LIVES) d.lives++;
+    // Find which lla entries have expired (ready to give a life back)
+    let changed = false;
+    let i = d.lla.length - 1;
+    while (i >= 0) {
+      if (now - d.lla[i] >= MS) {
+        d.lla.splice(i, 1);
+        if (d.lives < MAX_LIVES) d.lives++;
+        changed = true;
+      }
+      i--;
     }
-    if (rec.length) this._sync(u);
+    // Clean up stale entries beyond what we could ever need
+    d.lla = d.lla.filter((t) => now - t < MS * MAX_LIVES);
+    if (changed) this._sync(u);
   },
 
   nextLifeIn(u) {
@@ -267,7 +273,10 @@ const DB = {
     if (!d) return 0;
     this._regen(u);
     if (d.lives >= MAX_LIVES || !d.lla.length) return 0;
-    return Math.max(0, REGEN_MIN * 60000 - (Date.now() - Math.min(...d.lla)));
+    // Find the oldest lla entry (smallest timestamp) — that one regenerates next
+    const oldest = Math.min(...d.lla);
+    const ms = REGEN_MIN * 60000 - (Date.now() - oldest);
+    return Math.max(0, ms);
   },
 };
 
@@ -966,10 +975,23 @@ function tickLifeTimer() {
 //  SCREENS
 // ═══════════════════════════════════════════════════════
 function showScreen(id) {
+  // Always hide all overlays before switching screens
+  document
+    .querySelectorAll(".game-overlay")
+    .forEach((o) => o.classList.remove("active"));
+  // Hide game canvas background when not on game screen
+  const gameScreen = document.getElementById("gameScreen");
+  if (id !== "gameScreen") {
+    gameScreen.style.display = "none";
+  }
   document
     .querySelectorAll(".screen")
     .forEach((s) => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+  const target = document.getElementById(id);
+  target.classList.add("active");
+  if (id === "gameScreen") {
+    gameScreen.style.display = "";
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1752,6 +1774,7 @@ function nextLevel() {
 }
 function quitToMap() {
   stopGame();
+  hideOverlays();
   showLevelSelect(currentChIdx);
 }
 function stopGame() {

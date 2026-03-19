@@ -1,0 +1,486 @@
+/* ══════════════════════════════════════════════════════════
+   PIXELRUN Z — MOBILE LANDSCAPE CSS
+   Loaded separately, only affects (pointer: coarse) devices
+   Never touches desktop styles
+══════════════════════════════════════════════════════════ */
+
+@media (pointer: coarse) and (orientation: landscape) {
+  /* ── BASE ─────────────────────────────────────────────── */
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .screen {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    inset: 0;
+  }
+
+  /* ── LOGIN ────────────────────────────────────────────── */
+  #loginScreen {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    gap: 16px;
+    overflow-y: auto;
+  }
+
+  .login-center {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 700px;
+    flex-wrap: nowrap;
+  }
+
+  .game-logo {
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .logo-pixel,
+  .logo-run {
+    font-size: clamp(10px, 2.5vw, 20px);
+  }
+
+  .logo-z {
+    font-size: clamp(22px, 6vw, 44px);
+  }
+
+  .logo-tag {
+    font-size: 6px;
+  }
+
+  .login-box {
+    width: min(300px, 50vw);
+    padding: 16px 14px;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .login-box-header {
+    font-size: 8px;
+    margin-bottom: 2px;
+  }
+
+  .field input {
+    padding: 8px 10px;
+    font-size: 8px;
+  }
+
+  .field label {
+    font-size: 6px;
+  }
+
+  .px-btn {
+    font-size: 7px !important;
+    padding: 10px 14px !important;
+    width: 100% !important;
+  }
+
+  .login-msg {
+    font-size: 6px;
+    min-height: 10px;
+  }
+
+  .login-note,
+  .px-btn-forgot {
+    font-size: 6px;
+  }
+
+  /* ── CHARACTER SELECT ─────────────────────────────────── */
+  #charScreen {
+    padding: 8px 10px 8px;
+    gap: 6px;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .char-header {
+    flex-shrink: 0;
+  }
+
+  .char-title {
+    font-size: clamp(18px, 4vw, 32px);
+    letter-spacing: 2px;
+  }
+
+  .char-sub {
+    font-size: 10px;
+  }
+
+  .char-coins {
+    font-size: 10px;
+    padding: 3px 10px;
+    margin-top: 4px;
+  }
+
+  .char-select-layout {
+    flex: 1;
+    flex-direction: row;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .char-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 6px;
+    overflow-y: auto;
+    align-content: start;
+    flex: 1;
+  }
+
+  .char-card {
+    padding: 8px 6px;
+    border-radius: 10px;
+    gap: 4px;
+  }
+
+  .char-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .char-canvas {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .char-name {
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  .char-class {
+    font-size: 8px;
+  }
+
+  .stat-pip {
+    font-size: 7px;
+    padding: 1px 4px;
+  }
+
+  /* Preview panel — compact side column */
+  .char-preview-panel {
+    width: 130px;
+    min-width: 110px;
+    padding: 8px 8px;
+    gap: 4px;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow-y: auto;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: none;
+  }
+
+  #charPreviewCanvas {
+    width: 80px !important;
+    height: 106px !important;
+  }
+
+  .preview-title {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+  .preview-name {
+    font-size: 14px;
+  }
+
+  .preview-stats {
+    font-size: 9px;
+    line-height: 1.4;
+  }
+
+  .preview-weapon-label {
+    font-size: 8px;
+    margin-top: 2px;
+  }
+
+  .weapon-grid-small {
+    gap: 4px;
+  }
+
+  .weapon-card-small {
+    padding: 5px 7px;
+    border-radius: 7px;
+    gap: 5px;
+  }
+
+  .weapon-card-small .wcs-icon {
+    font-size: 14px;
+  }
+
+  .weapon-card-small .wcs-name {
+    font-size: 9px;
+  }
+
+  .weapon-card-small .wcs-dmg {
+    font-size: 8px;
+  }
+
+  /* LET'S GO button */
+  #charConfirmBtn {
+    width: calc(100% - 20px) !important;
+    max-width: 100% !important;
+    margin: 4px 10px 6px !important;
+    padding: 10px !important;
+    font-size: 13px !important;
+    border-radius: 40px !important;
+    flex-shrink: 0;
+  }
+
+  /* ── WORLD MAP ────────────────────────────────────────── */
+  #mapScreen {
+    overflow-y: auto;
+  }
+
+  .map-topbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .map-username {
+    font-size: 16px;
+  }
+
+  .map-stats {
+    font-size: 10px;
+    gap: 8px;
+  }
+
+  .lives-tag {
+    font-size: 11px;
+  }
+
+  .icon-btn {
+    padding: 6px 9px;
+    font-size: 15px;
+    border-radius: 9px;
+  }
+
+  .worlds-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .world-card {
+    padding: 12px 10px;
+    border-radius: 12px;
+  }
+
+  .wc-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .wc-chapter {
+    font-size: 9px;
+  }
+
+  .wc-name {
+    font-size: 15px;
+  }
+
+  .wc-progress {
+    font-size: 9px;
+  }
+
+  /* ── LEVEL SELECT ─────────────────────────────────────── */
+  .level-topbar {
+    padding: 7px 10px;
+    gap: 8px;
+  }
+
+  .level-world-title {
+    font-size: clamp(14px, 3vw, 22px);
+  }
+
+  .level-subtitle {
+    font-size: 10px;
+    padding: 5px 12px;
+  }
+
+  .level-grid {
+    grid-template-columns: repeat(10, 1fr);
+    gap: 5px;
+    max-width: 100%;
+  }
+
+  .level-btn {
+    font-size: 10px;
+    padding: 6px 2px;
+    border-radius: 7px;
+  }
+
+  .level-grid-wrap {
+    padding: 10px 12px;
+  }
+
+  /* ── GAME SCREEN ──────────────────────────────────────── */
+  #gameScreen {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #gameWrapper {
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #hud {
+    width: 100%;
+    flex-shrink: 0;
+    padding: 4px 10px;
+  }
+
+  #hud .hud-left span,
+  #hud .hud-right span {
+    font-size: 10px;
+  }
+
+  #hud .hud-lives {
+    font-size: 12px !important;
+  }
+
+  #hud .hud-weapon {
+    font-size: 15px !important;
+  }
+
+  #c {
+    width: 100vw !important;
+    display: block;
+    flex: 1;
+  }
+
+  /* ── MOBILE CONTROLS ──────────────────────────────────── */
+  .mobile-controls {
+    display: flex !important;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: clamp(80px, 18vh, 120px);
+    padding: 8px clamp(10px, 3vw, 20px);
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none;
+    z-index: 10;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.35), transparent);
+  }
+
+  .mc-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(4px, 1vh, 8px);
+    pointer-events: all;
+  }
+
+  .mc-lr {
+    display: flex;
+    gap: clamp(6px, 1.5vw, 12px);
+  }
+
+  .mc-btn {
+    width: clamp(44px, 10vw, 60px);
+    height: clamp(44px, 10vw, 60px);
+    font-size: clamp(16px, 4vw, 22px);
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .mc-up {
+    width: clamp(40px, 9vw, 54px) !important;
+    height: clamp(40px, 9vw, 54px) !important;
+    font-size: clamp(14px, 3.5vw, 20px) !important;
+  }
+
+  .mc-right {
+    pointer-events: all;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mc-atk {
+    width: clamp(56px, 13vw, 80px) !important;
+    height: clamp(56px, 13vw, 80px) !important;
+    font-size: clamp(22px, 5.5vw, 34px) !important;
+    background: rgba(255, 107, 53, 0.3);
+    border: 3px solid #ff6b35;
+    border-radius: 50%;
+    box-shadow: 0 0 16px rgba(255, 107, 53, 0.4);
+  }
+
+  /* ── OVERLAYS ─────────────────────────────────────────── */
+  .overlay-box {
+    padding: 20px 20px;
+    gap: 8px;
+    min-width: min(260px, 80vw);
+    border-radius: 16px;
+  }
+
+  .overlay-icon {
+    font-size: 32px;
+  }
+
+  .overlay-title {
+    font-size: 22px;
+  }
+
+  .overlay-msg {
+    font-size: 11px;
+  }
+
+  .overlay-score {
+    font-size: 16px;
+  }
+
+  .modern-btn {
+    font-size: 13px !important;
+    padding: 10px 20px !important;
+    width: 180px !important;
+  }
+
+  .wait-timer {
+    font-size: 20px;
+  }
+
+  /* ── CHAR LOCKED OVERLAY ──────────────────────────────── */
+  .char-locked-btn {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+
+  .char-locked-label {
+    font-size: 8px;
+  }
+}
+
+/* ── PORTRAIT BLOCKER (unchanged) ────────────────────────── */
+@media (pointer: coarse) and (orientation: portrait) {
+  #rotatePrompt {
+    display: flex !important;
+  }
+  .screen,
+  .screen.active {
+    display: none !important;
+  }
+}

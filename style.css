@@ -378,7 +378,6 @@ body {
   padding: 20px 16px 32px;
   gap: 20px;
   overflow-y: auto;
-  justify-content: flex-start;
 }
 .char-header {
   position: relative;
@@ -436,7 +435,7 @@ body {
   align-items: center;
   gap: 8px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 .char-card::before {
   content: "";
@@ -496,22 +495,25 @@ body {
 }
 .char-stats {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
 }
 .stat-pip {
-  font-size: 9px;
-  padding: 2px 6px;
+  font-size: 8px;
+  padding: 2px 5px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
 }
 .char-locked {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.72);
-  border-radius: 14px;
+  border-radius: 16px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -968,10 +970,6 @@ body {
 .full-btn {
   width: 100% !important;
   max-width: 400px;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 2;
-  margin-bottom: 16px;
 }
 
 /* ══════════════════════════════════════════
@@ -982,6 +980,14 @@ body {
   align-items: stretch;
   justify-content: flex-start;
   flex-direction: column;
+  isolation: isolate;
+}
+
+/* When gameScreen is not active, ensure canvas is fully hidden */
+#gameScreen:not(.active) {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 #gameWrapper {
@@ -1159,12 +1165,10 @@ body {
 .char-select-layout {
   display: flex;
   flex: 1;
-  min-height: 0;
   overflow: hidden;
   gap: 0;
   position: relative;
   z-index: 1;
-  width: 100%;
 }
 
 .char-grid {
