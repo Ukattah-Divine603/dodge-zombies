@@ -466,3 +466,33 @@
     width: 160px !important;
   }
 }
+
+/* ── LET'S GO BUTTON — always visible on mobile ─────── */
+@media (pointer: coarse) and (orientation: landscape) {
+  #charScreen {
+    overflow-y: auto !important;
+  }
+  #charConfirmBtn {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 10 !important;
+    width: calc(100% - 16px) !important;
+    margin: 4px 8px 8px !important;
+    padding: 12px !important;
+    font-size: 14px !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  #charConfirmBtn {
+    display: block !important;
+    visibility: visible !important;
+    width: 90% !important;
+    margin: 8px auto !important;
+    padding: 14px !important;
+    font-size: 15px !important;
+  }
+}

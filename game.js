@@ -46,7 +46,7 @@ const SUPA = {
             username: u,
             password: p,
             progress: {},
-            lives: 3,
+            lives: 5,
             last_life_lost_at: [],
             coins: 0,
             owned: { chars: [], weapons: [] },
@@ -103,25 +103,37 @@ const DB = {
   _c: {},
 
   async load(u) {
-    const cached = LOCAL.load(u);
-    if (cached) {
-      this._c[u] = cached;
-      this._refreshFromCloud(u);
-      return cached;
-    }
+    // Always hit Supabase first for lives/progress accuracy across devices
     const row = await SUPA.getUser(u);
     if (row) {
-      const data = {
+      const cloudData = {
         password: row.password,
         progress: row.progress || {},
-        lives: row.lives ?? 3,
-        lla: row.last_life_lost_at || [],
+        lives: Math.min(row.lives ?? 5, MAX_LIVES),
+        lla: (row.last_life_lost_at || []).map(Number).filter(Boolean),
         coins: row.coins || 0,
         owned: row.owned || { chars: [], weapons: [] },
       };
-      this._c[u] = data;
-      LOCAL.save(u, data);
-      return data;
+      // Merge with local cache: keep higher progress and coin count
+      const cached = LOCAL.load(u);
+      if (cached) {
+        if (
+          Object.keys(cached.progress || {}).length >
+          Object.keys(cloudData.progress || {}).length
+        ) {
+          cloudData.progress = cached.progress;
+        }
+        cloudData.coins = Math.max(cloudData.coins, cached.coins || 0);
+      }
+      this._c[u] = cloudData;
+      LOCAL.save(u, cloudData);
+      return cloudData;
+    }
+    // Fallback to local if offline
+    const cached = LOCAL.load(u);
+    if (cached) {
+      this._c[u] = cached;
+      return cached;
     }
     return null;
   },
@@ -132,8 +144,8 @@ const DB = {
       const cloud = {
         password: row.password,
         progress: row.progress || {},
-        lives: row.lives ?? 3,
-        lla: row.last_life_lost_at || [],
+        lives: Math.min(row.lives ?? 5, MAX_LIVES),
+        lla: (row.last_life_lost_at || []).map(Number).filter(Boolean),
         coins: row.coins || 0,
         owned: row.owned || { chars: [], weapons: [] },
       };
@@ -207,7 +219,7 @@ const DB = {
     const data = {
       password: p,
       progress: {},
-      lives: 3,
+      lives: 5,
       lla: [],
       coins: 0,
       owned: { chars: [], weapons: [] },
@@ -241,8 +253,7 @@ const DB = {
     this._regen(u);
     if (d.lives > 0) {
       d.lives--;
-      // Only track up to MAX_LIVES timestamps
-      if (d.lla.length < MAX_LIVES) d.lla.push(Date.now());
+      d.lla.push(Date.now()); // always record when life was lost
       this._sync(u);
     }
   },
@@ -252,19 +263,18 @@ const DB = {
     if (!d) return;
     const now = Date.now(),
       MS = REGEN_MIN * 60000;
-    // Find which lla entries have expired (ready to give a life back)
+    // Ensure lla are all numbers (Supabase can return strings)
+    d.lla = (d.lla || []).map(Number).filter((n) => !isNaN(n) && n > 0);
     let changed = false;
-    let i = d.lla.length - 1;
-    while (i >= 0) {
-      if (now - d.lla[i] >= MS) {
-        d.lla.splice(i, 1);
-        if (d.lives < MAX_LIVES) d.lives++;
-        changed = true;
-      }
-      i--;
+    // Process oldest entries first — each expired entry = +1 life
+    d.lla.sort((a, b) => a - b);
+    while (d.lla.length > 0 && now - d.lla[0] >= MS) {
+      d.lla.shift(); // remove the oldest expired entry
+      if (d.lives < MAX_LIVES) d.lives++;
+      changed = true;
     }
-    // Clean up stale entries beyond what we could ever need
-    d.lla = d.lla.filter((t) => now - t < MS * MAX_LIVES);
+    // Clean up any entries too old to matter
+    d.lla = d.lla.filter((t) => now - t < MS * MAX_LIVES * 2);
     if (changed) this._sync(u);
   },
 
@@ -273,9 +283,9 @@ const DB = {
     if (!d) return 0;
     this._regen(u);
     if (d.lives >= MAX_LIVES || !d.lla.length) return 0;
-    // Find the oldest lla entry (smallest timestamp) — that one regenerates next
-    const oldest = Math.min(...d.lla);
-    const ms = REGEN_MIN * 60000 - (Date.now() - oldest);
+    // Sort so oldest is first — that's the next one to expire
+    const sorted = [...d.lla].map(Number).sort((a, b) => a - b);
+    const ms = REGEN_MIN * 60000 - (Date.now() - sorted[0]);
     return Math.max(0, ms);
   },
 };
@@ -1356,27 +1366,46 @@ function seededRng(seed) {
 
 function getObjective(idx, rng, numZombies, numCoins) {
   const li = idx % LEVELS_PER;
+  const chIdx = Math.floor(idx / LEVELS_PER);
+  // First 5 levels of every chapter = just reach the exit
   if (li < 5) return { type: "reach", desc: "Reach the exit!" };
+  // Levels 5-10: kill a small number
   if (li < 10)
     return {
       type: "kill_n",
-      count: Math.min(numZombies, 1 + Math.floor(rng() * 2)),
+      count: Math.max(1, Math.min(numZombies, 1 + Math.floor(rng() * 2))),
       desc: "",
     };
   const roll = rng();
-  if (roll < 0.3) return { type: "kill_all", desc: "Kill all zombies!" };
+  // kill_all only on later chapters and only if zombies are manageable
+  if (roll < 0.3) {
+    if (chIdx >= 3 && numZombies <= 12)
+      return { type: "kill_all", desc: "Kill all zombies!" };
+    // fallback to kill_n if kill_all would be too hard
+    return {
+      type: "kill_n",
+      count: Math.max(1, Math.floor(numZombies * 0.4)),
+      desc: "",
+    };
+  }
+  // kill_n: max 40% of zombies, always achievable
   if (roll < 0.55)
     return {
       type: "kill_n",
-      count: Math.min(numZombies, Math.max(1, Math.floor(numZombies * 0.6))),
+      count: Math.max(
+        1,
+        Math.min(numZombies - 1, Math.floor(numZombies * 0.4)),
+      ),
       desc: "",
     };
+  // survive: max 20 seconds — never more
   if (roll < 0.7)
-    return { type: "survive", seconds: 15 + Math.floor(rng() * 20), desc: "" };
+    return { type: "survive", seconds: 8 + Math.floor(rng() * 12), desc: "" };
+  // coins: max 50% of coins on the level
   if (roll < 0.85)
     return {
       type: "coins",
-      count: Math.max(3, Math.floor(numCoins * 0.7)),
+      count: Math.max(3, Math.min(Math.floor(numCoins * 0.5), numCoins - 2)),
       desc: "",
     };
   return { type: "reach", desc: "Reach the exit!" };
