@@ -378,6 +378,7 @@ body {
   padding: 20px 16px 32px;
   gap: 20px;
   overflow-y: auto;
+  justify-content: flex-start;
 }
 .char-header {
   position: relative;
@@ -967,22 +968,31 @@ body {
 .full-btn {
   width: 100% !important;
   max-width: 400px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 16px;
 }
 
 /* ══════════════════════════════════════════
-   GAME SCREEN — true fullscreen on desktop
+   GAME SCREEN — TRUE FULLSCREEN
 ══════════════════════════════════════════ */
 #gameScreen {
   background: #000;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
   flex-direction: column;
 }
+
 #gameWrapper {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  width: 100vw;
+  height: 100vh;
+  flex: 1;
 }
+
 #hud {
   display: flex;
   align-items: center;
@@ -991,6 +1001,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: none;
   gap: 8px;
+  flex-shrink: 0;
+  width: 100%;
 }
 .hud-left,
 .hud-right {
@@ -1029,22 +1041,33 @@ body {
 
 #c {
   display: block;
+  flex: 1;
+  width: 100% !important;
 }
 
 /* Desktop: fill full viewport */
 @media (pointer: fine) {
   #gameScreen {
     background: #000;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
   }
   #gameWrapper {
     width: 100vw !important;
+    height: 100vh !important;
+    display: flex;
+    flex-direction: column;
   }
   #gameWrapper #hud {
     width: 100%;
+    flex-shrink: 0;
   }
   #c {
     width: 100vw !important;
     height: calc(100vh - 36px) !important;
+    flex: 1;
+    display: block;
   }
 }
 
@@ -1136,10 +1159,12 @@ body {
 .char-select-layout {
   display: flex;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   gap: 0;
   position: relative;
   z-index: 1;
+  width: 100%;
 }
 
 .char-grid {

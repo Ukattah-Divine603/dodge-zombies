@@ -6,8 +6,12 @@
 const SUPA_URL = "https://oyxymvhfafbegqnwvmpz.supabase.co";
 const SUPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95eHltdmhmYWZiZWdxbnd2bXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MTAxMzIsImV4cCI6MjA4ODk4NjEzMn0.8IdZBZOR4Kt-TvDpBSmztU4wJpQNs7mGq8CIGuTNIsI";
+const SUPA_H = {
+  "Content-Type": "application/json",
+  apikey: SUPA_KEY,
+  Authorization: "Bearer " + SUPA_KEY,
+};
 
-// fetch with a hard timeout so login never hangs forever
 function fetchWithTimeout(url, opts, ms = 6000) {
   return Promise.race([
     fetch(url, opts),
@@ -18,11 +22,7 @@ function fetchWithTimeout(url, opts, ms = 6000) {
 }
 
 const SUPA = {
-  h: {
-    "Content-Type": "application/json",
-    apikey: SUPA_KEY,
-    Authorization: "Bearer " + SUPA_KEY,
-  },
+  h: SUPA_H,
   async getUser(u) {
     try {
       const r = await fetchWithTimeout(
@@ -48,6 +48,8 @@ const SUPA = {
             progress: {},
             lives: 3,
             last_life_lost_at: [],
+            coins: 0,
+            owned: { chars: [], weapons: [] },
             updated_at: new Date().toISOString(),
           }),
         },
@@ -71,10 +73,6 @@ const SUPA = {
   },
 };
 
-// ═══════════════════════════════════════════════════════
-//  LOCAL CACHE  (localStorage fallback for instant login)
-//  Stores: { username, password, progress, lives, lla }
-// ═══════════════════════════════════════════════════════
 const LOCAL = {
   key(u) {
     return "prz_" + u;
@@ -99,25 +97,18 @@ const LOCAL = {
   },
 };
 
-// ═══════════════════════════════════════════════════════
-//  DB
-// ═══════════════════════════════════════════════════════
 const MAX_LIVES = 3,
   REGEN_MIN = 2;
 const DB = {
   _c: {},
 
-  // Load user — check local cache FIRST (instant), then Supabase
   async load(u) {
-    // 1. Try local cache first — instant login for returning users
     const cached = LOCAL.load(u);
     if (cached) {
       this._c[u] = cached;
-      // Refresh from Supabase in background (don't await)
       this._refreshFromCloud(u);
       return cached;
     }
-    // 2. No local cache — must hit Supabase (new device)
     const row = await SUPA.getUser(u);
     if (row) {
       const data = {
@@ -125,6 +116,8 @@ const DB = {
         progress: row.progress || {},
         lives: row.lives ?? 3,
         lla: row.last_life_lost_at || [],
+        coins: row.coins || 0,
+        owned: row.owned || { chars: [], weapons: [] },
       };
       this._c[u] = data;
       LOCAL.save(u, data);
@@ -133,22 +126,23 @@ const DB = {
     return null;
   },
 
-  // Background sync from cloud (keeps local cache fresh)
   async _refreshFromCloud(u) {
     const row = await SUPA.getUser(u);
     if (row && this._c[u]) {
-      // Merge: take whichever has more progress
       const cloud = {
         password: row.password,
         progress: row.progress || {},
         lives: row.lives ?? 3,
         lla: row.last_life_lost_at || [],
+        coins: row.coins || 0,
+        owned: row.owned || { chars: [], weapons: [] },
       };
       const local = this._c[u];
-      // Keep higher progress count
       if (
         Object.keys(cloud.progress).length >= Object.keys(local.progress).length
       ) {
+        // Keep whichever has more coins
+        cloud.coins = Math.max(cloud.coins, local.coins || 0);
         this._c[u] = cloud;
         LOCAL.save(u, cloud);
       }
@@ -167,6 +161,7 @@ const DB = {
       owned: d.owned || { chars: [], weapons: [] },
     });
   },
+
   getCoins(u) {
     return (this.user(u) || {}).coins || 0;
   },
@@ -175,6 +170,11 @@ const DB = {
     if (!d) return;
     d.coins = (d.coins || 0) + n;
     this._sync(u);
+    // Always update all coin displays immediately
+    const mc = document.getElementById("mapCoins");
+    if (mc) mc.textContent = d.coins;
+    const cb = document.getElementById("charCoinBalance");
+    if (cb) cb.textContent = `🪙 ${d.coins} coins`;
   },
   spendCoins(u, n) {
     const d = this.user(u);
@@ -204,7 +204,14 @@ const DB = {
   },
 
   async create(u, p) {
-    const data = { password: p, progress: {}, lives: 3, lla: [] };
+    const data = {
+      password: p,
+      progress: {},
+      lives: 3,
+      lla: [],
+      coins: 0,
+      owned: { chars: [], weapons: [] },
+    };
     this._c[u] = data;
     LOCAL.save(u, data);
     await SUPA.createUser(u, p);
@@ -275,10 +282,9 @@ const CHAPTERS = 10,
   LH = 256;
 
 // ═══════════════════════════════════════════════════════
-//  CHARACTERS  (coinCost:0 = free/level unlock, >0 = coin shop)
+//  CHARACTERS
 // ═══════════════════════════════════════════════════════
 const CHARACTERS = [
-  // ── FREE (level unlock) ──
   {
     id: "jake",
     name: "JAKE",
@@ -347,7 +353,6 @@ const CHARACTERS = [
     unlockAt: 100,
     stats: ["🌙 Floaty", "🌊 Wide Jump", "✨ 90 HP"],
   },
-  // ── COIN SHOP ──
   {
     id: "blaze",
     name: "BLAZE",
@@ -419,10 +424,9 @@ const CHARACTERS = [
 ];
 
 // ═══════════════════════════════════════════════════════
-//  WEAPONS  (coinCost:0 = free/level unlock, >0 = coin shop)
+//  WEAPONS
 // ═══════════════════════════════════════════════════════
 const WEAPONS = [
-  // ── FREE ──
   {
     id: "sword",
     name: "SWORD",
@@ -471,7 +475,6 @@ const WEAPONS = [
     unlockAt: 150,
     desc: "Electric pulse. Long reach.",
   },
-  // ── COIN SHOP ──
   {
     id: "axe",
     name: "FIRE AXE",
@@ -687,7 +690,6 @@ function toggleAuthMode() {
     ? "NEW PLAYER? REGISTER"
     : "HAVE ACCOUNT? LOGIN";
   document.getElementById("loginMsg").textContent = "";
-  // Show forgot password only on login mode
   const fb =
     document.getElementById("forgotBtn") ||
     document.querySelector(".px-btn-forgot");
@@ -695,7 +697,6 @@ function toggleAuthMode() {
 }
 
 function showForgotPassword() {
-  // Inline overlay for password reset
   let el = document.getElementById("forgotOverlay");
   if (!el) {
     el = document.createElement("div");
@@ -748,14 +749,12 @@ async function submitForgotPassword() {
   }
   msg.style.color = "#6060a0";
   msg.textContent = "CHECKING...";
-  // Verify user exists in Supabase
   const row = await SUPA.getUser(user);
   if (!row) {
     msg.style.color = "#e8331a";
     msg.textContent = "USERNAME NOT FOUND";
     return;
   }
-  // Update password in Supabase
   try {
     await fetchWithTimeout(
       `${SUPA_URL}/rest/v1/saves?username=eq.${encodeURIComponent(user)}`,
@@ -769,7 +768,6 @@ async function submitForgotPassword() {
       },
       8000,
     );
-    // Update local cache too if logged in
     if (DB._c[user]) DB._c[user].password = np;
     LOCAL.save(user, { ...LOCAL.load(user), password: np });
     msg.style.color = "#4ab04a";
@@ -809,13 +807,11 @@ async function handleAuth() {
         msg.textContent = "PASSWORD TOO SHORT";
         return;
       }
-      // Check local cache first — instant duplicate check
       const localEx = LOCAL.load(name);
       if (localEx) {
         msg.textContent = "USERNAME TAKEN!";
         return;
       }
-      // Check Supabase (with timeout)
       msg.style.color = "rgba(255,255,255,0.5)";
       msg.textContent = "CHECKING...";
       const ex = await SUPA.getUser(name);
@@ -830,20 +826,17 @@ async function handleAuth() {
       msg.textContent = "ACCOUNT CREATED! ✓";
       setTimeout(() => loginAs(name), 600);
     } else {
-      // LOGIN — try local cache first (instant)
       const cached = LOCAL.load(name);
       if (cached) {
         if (cached.password !== pass) {
           msg.textContent = "WRONG USERNAME OR PASSWORD";
           return;
         }
-        // Local cache hit — log in immediately, sync in background
         DB._c[name] = cached;
         DB._refreshFromCloud(name);
         loginAs(name);
         return;
       }
-      // No local cache — new device, hit Supabase
       msg.style.color = "rgba(255,255,255,0.5)";
       msg.textContent = "LOADING SAVE...";
       const row = await DB.load(name);
@@ -860,7 +853,6 @@ async function handleAuth() {
       loginAs(name);
     }
   } finally {
-    // Always re-enable button
     btn.textContent = origText;
     btn.disabled = false;
   }
@@ -870,14 +862,11 @@ function loginAs(name) {
   currentUser = name;
   document.getElementById("playerName").textContent = name.toUpperCase();
   startLifeTimer();
-  // Show instructions for new users (first time only)
   const seenKey = "prz_seen_instructions_" + name;
   if (!localStorage.getItem(seenKey)) {
     localStorage.setItem(seenKey, "1");
     const el = document.getElementById("instructionsOverlay");
-    if (el) {
-      el.style.display = "flex";
-    }
+    if (el) el.style.display = "flex";
   } else {
     showCharSelect();
   }
@@ -903,8 +892,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("passwordInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleAuth();
   });
-
-  // ── Orientation lock (landscape on mobile) ──
   function checkOrientation() {
     const isMobile = window.matchMedia("(pointer: coarse)").matches;
     const isPortrait = window.innerHeight > window.innerWidth;
@@ -914,14 +901,11 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", checkOrientation);
   window.addEventListener("orientationchange", checkOrientation);
   checkOrientation();
-
-  // Try native orientation lock
   try {
     screen.orientation.lock("landscape").catch(() => {});
   } catch (e) {}
 });
 
-// ── Password show/hide toggle ──
 function togglePassword() {
   const inp = document.getElementById("passwordInput");
   const btn = document.getElementById("passToggle");
@@ -930,7 +914,6 @@ function togglePassword() {
   btn.textContent = isHidden ? "🙈" : "👁";
 }
 
-// ── Update weapon button icon on mobile ──
 function updateWeaponBtn() {
   const btn = document.getElementById("mcAtkBtn");
   if (btn) btn.textContent = selectedWeapon.icon;
@@ -996,11 +979,8 @@ function showCharSelect() {
   stopGame();
   const prog = DB.getProgress(currentUser),
     done = Object.keys(prog).length;
-
-  // ── Character cards ──
-  // Show coin balance
   const coinBal = document.getElementById("charCoinBalance");
-  if (coinBal) coinBal.textContent = `🪙 ${getPlayerCoins()} coins`;
+  if (coinBal) coinBal.textContent = `🪙 ${DB.getCoins(currentUser)} coins`;
   const cg = document.getElementById("charGrid");
   cg.innerHTML = "";
   CHARACTERS.forEach((ch, i) => {
@@ -1013,11 +993,6 @@ function showCharSelect() {
       (selectedChar.id === ch.id ? " selected" : "") +
       (locked ? " locked" : "");
     card.style.setProperty("--char-color", ch.color);
-    const lockMsg = levelLocked
-      ? `🔒 ${ch.unlockAt} levels`
-      : coinLocked
-        ? `🪙 ${ch.coinCost} coins`
-        : "";
     const lockBtnHtml = coinLocked
       ? `<div class="char-locked" onclick="event.stopPropagation();buyChar('${ch.id}')"><div class="char-locked-btn">🪙 ${ch.coinCost} coins</div><div class="char-locked-label">tap to unlock</div></div>`
       : levelLocked
@@ -1043,7 +1018,6 @@ function showCharSelect() {
     }, 20);
   });
 
-  // ── Weapon list (compact) ──
   const wg = document.getElementById("weaponGrid");
   wg.innerHTML = "";
   WEAPONS.forEach((w) => {
@@ -1072,7 +1046,6 @@ function showCharSelect() {
     wg.appendChild(card);
   });
 
-  // ── Live preview ──
   updateCharPreview();
   showScreen("charScreen");
 }
@@ -1135,15 +1108,12 @@ function updateCharPreview() {
   const ch = selectedChar;
   px.clearRect(0, 0, 120, 160);
   px.imageSmoothingEnabled = true;
-  // Background tint
   px.fillStyle = ch.color + "22";
   px.fillRect(0, 0, 120, 160);
-  // Shadow
   px.fillStyle = "rgba(0,0,0,0.2)";
   px.beginPath();
   px.ellipse(60, 148, 28, 8, 0, 0, Math.PI * 2);
   px.fill();
-  // Shoes
   px.fillStyle = ch.shoe || "#333";
   px.beginPath();
   px.ellipse(44, 138, 14, 7, 0, 0, Math.PI * 2);
@@ -1151,7 +1121,6 @@ function updateCharPreview() {
   px.beginPath();
   px.ellipse(76, 138, 14, 7, 0, 0, Math.PI * 2);
   px.fill();
-  // Pants
   px.fillStyle = ch.pants;
   px.beginPath();
   if (px.roundRect) px.roundRect(38, 100, 18, 38, 4);
@@ -1161,7 +1130,6 @@ function updateCharPreview() {
   if (px.roundRect) px.roundRect(64, 100, 18, 38, 4);
   else px.rect(64, 100, 18, 38);
   px.fill();
-  // Body
   px.fillStyle = ch.shirt;
   px.beginPath();
   if (px.roundRect) px.roundRect(32, 60, 56, 44, 8);
@@ -1172,7 +1140,6 @@ function updateCharPreview() {
   if (px.roundRect) px.roundRect(36, 63, 44, 10, 4);
   else px.rect(36, 63, 44, 10);
   px.fill();
-  // Arms
   px.fillStyle = ch.shirt;
   px.beginPath();
   if (px.roundRect) px.roundRect(18, 62, 16, 28, 6);
@@ -1182,7 +1149,6 @@ function updateCharPreview() {
   if (px.roundRect) px.roundRect(86, 62, 16, 28, 6);
   else px.rect(86, 62, 16, 28);
   px.fill();
-  // Hands
   px.fillStyle = ch.skin;
   px.beginPath();
   px.arc(26, 92, 7, 0, Math.PI * 2);
@@ -1190,25 +1156,21 @@ function updateCharPreview() {
   px.beginPath();
   px.arc(94, 92, 7, 0, Math.PI * 2);
   px.fill();
-  // Neck
   px.fillStyle = ch.skin;
   px.beginPath();
   if (px.roundRect) px.roundRect(52, 46, 16, 18, 4);
   else px.rect(52, 46, 16, 18);
   px.fill();
-  // Head
   px.fillStyle = ch.skin;
   px.beginPath();
   if (px.roundRect) px.roundRect(38, 18, 44, 38, 14);
   else px.rect(38, 18, 44, 38);
   px.fill();
-  // Hair
   px.fillStyle = ch.hair;
   px.beginPath();
   if (px.roundRect) px.roundRect(38, 14, 44, 16, 10);
   else px.rect(38, 14, 44, 16);
   px.fill();
-  // Eyes
   px.fillStyle = "#fff";
   px.beginPath();
   px.ellipse(52, 30, 6, 5, 0, 0, Math.PI * 2);
@@ -1230,13 +1192,11 @@ function updateCharPreview() {
   px.beginPath();
   px.arc(70, 28, 1.2, 0, Math.PI * 2);
   px.fill();
-  // Smile
   px.strokeStyle = "#8B3A3A";
   px.lineWidth = 2;
   px.beginPath();
   px.arc(60, 38, 6, 0.2, Math.PI - 0.2);
   px.stroke();
-  // Name tag
   px.fillStyle = ch.color;
   px.beginPath();
   if (px.roundRect) px.roundRect(20, 148, 80, 14, 4);
@@ -1361,8 +1321,7 @@ function showLevelSelect(ci) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  LEVEL GENERATOR  — with objectives, zombie types,
-//  crumbling platforms, locked exits
+//  LEVEL GENERATOR
 // ═══════════════════════════════════════════════════════
 function seededRng(seed) {
   let s = seed >>> 0;
@@ -1373,7 +1332,6 @@ function seededRng(seed) {
   };
 }
 
-// Objective types: "reach" | "kill_all" | "kill_n" | "survive" | "coins"
 function getObjective(idx, rng, numZombies, numCoins) {
   const li = idx % LEVELS_PER;
   if (li < 5) return { type: "reach", desc: "Reach the exit!" };
@@ -1415,7 +1373,6 @@ function generateLevel(idx) {
     crumblePlats = [];
   let cursor = 4;
 
-  // Regular platforms — bigger gaps at higher chapters
   for (let i = 0, n = 5 + Math.floor(diff * 16); i < n; i++) {
     const gap = 2 + Math.floor(rng() * (3 + diff * 4 + chIdx * 0.3)),
       tx = cursor + gap;
@@ -1427,7 +1384,6 @@ function generateLevel(idx) {
     }
   }
 
-  // Crumbling platforms (appear from chapter 1)
   if (chIdx >= 0) {
     const numCrumble = 2 + Math.floor(diff * 6);
     for (let i = 0; i < numCrumble; i++) {
@@ -1443,7 +1399,6 @@ function generateLevel(idx) {
     }
   }
 
-  // Coins
   const coins = [];
   const numCoins = 10 + Math.floor(diff * 24);
   for (let i = 0; i < numCoins; i++) {
@@ -1454,17 +1409,16 @@ function generateLevel(idx) {
         y: p.ty * TILE - 12,
         collected: false,
       });
-    } else
+    } else {
       coins.push({
         x: (3 + Math.floor(rng() * (levelW - 6))) * TILE + 4,
         y: (GROUND_Y - 1) * TILE - 10,
         collected: false,
       });
+    }
   }
 
-  // ZOMBIES — significantly more, harder, faster
   const zombies = [];
-  // Minimum 3 zombies from level 1, scaling to 20+ at late game
   const numZ =
     3 +
     Math.floor(diff * 18) +
@@ -1474,23 +1428,16 @@ function generateLevel(idx) {
   for (let i = 0; i < numZ; i++) {
     const onP = rng() < 0.4 && platforms.length;
     let ex, ey, minX, maxX;
-    // Base speed is 40% higher than before
     const baseSpd = 0.7 + diff * 2.0 + chIdx * 0.14;
-    // HP scales more steeply
     const maxHp = 30 + Math.floor(diff * 120) + chIdx * 15;
-
-    // Zombie type distribution — more dangerous types earlier
     let type = 0;
-    if (chIdx >= 1 && rng() < 0.3) type = 1; // runner
-    if (chIdx >= 1 && rng() < 0.25) type = 2; // armoured (starts earlier)
-    if (chIdx >= 2 && rng() < 0.25) type = 3; // thrower (starts earlier)
-
+    if (chIdx >= 1 && rng() < 0.3) type = 1;
+    if (chIdx >= 1 && rng() < 0.25) type = 2;
+    if (chIdx >= 2 && rng() < 0.25) type = 3;
     const spd =
       type === 1 ? baseSpd * 2.2 : type === 2 ? baseSpd * 0.65 : baseSpd;
     const hp = type === 2 ? maxHp * 2.8 : maxHp;
-    // Aggro range increased — zombies notice you sooner
     const aggroRange = type === 3 ? 160 : type === 1 ? 130 : 100;
-
     if (onP) {
       const p = platforms[Math.floor(rng() * platforms.length)];
       ex = p.tx * TILE;
@@ -1504,7 +1451,6 @@ function generateLevel(idx) {
       maxX = Math.min((levelW - 1) * TILE, ex + 7 * TILE);
     }
     if (maxX - minX < TILE * 2) maxX = minX + TILE * 3;
-
     zombies.push({
       x: ex,
       y: ey,
@@ -1526,12 +1472,12 @@ function generateLevel(idx) {
     });
   }
 
-  // More spikes, from chapter 0
   for (let i = 0, n = 1 + Math.floor(diff * 10) + chIdx; i < n; i++)
     spikes.push({
       x: (5 + Math.floor(rng() * (levelW - 10))) * TILE + 2,
       y: GROUND_Y * TILE - 8,
     });
+
   if (chIdx >= 2) {
     for (let i = 0, n = 1 + Math.floor((chIdx - 2) * 1.0); i < n; i++) {
       const tx = 8 + Math.floor(rng() * (levelW - 16)),
@@ -1557,6 +1503,35 @@ function generateLevel(idx) {
   if (objective.type === "coins")
     objective.desc = `Collect ${objective.count} coins!`;
 
+  // Every 10th level = boss level
+  const isBossLevel = (idx + 1) % 10 === 0;
+  if (isBossLevel) {
+    const bossHp = 500 + Math.floor(diff * 1000);
+    zombies.push({
+      x: (levelW - 8) * TILE,
+      y: GROUND_Y * TILE - 40,
+      vx: 1,
+      baseSpd: 1.2 + diff * 1.5,
+      minX: 4 * TILE,
+      maxX: (levelW - 4) * TILE,
+      hp: bossHp,
+      maxHp: bossHp,
+      alive: true,
+      hitFlash: 0,
+      facingRight: false,
+      attackCooldown: 0,
+      type: 4,
+      variant: 0,
+      aggroRange: 999,
+      throwTimer: 0,
+      staggerTimer: 0,
+      phase: 1,
+      phaseTimer: 0,
+      chargeFrames: 0,
+      chargeVx: 0,
+    });
+  }
+
   return {
     idx,
     chIdx,
@@ -1572,6 +1547,7 @@ function generateLevel(idx) {
     objective,
     exitLocked: objective.type !== "reach" && objective.type !== "survive",
     surviveTimer: 0,
+    isBossLevel,
   };
 }
 
@@ -1583,8 +1559,7 @@ const canvas = document.getElementById("c"),
 ctx.imageSmoothingEnabled = true;
 ctx.imageSmoothingQuality = "high";
 
-// Device pixel ratio — renders at native screen density for HD/4K sharpness
-const DPR = Math.min(window.devicePixelRatio || 1, 3); // cap at 3× to avoid memory issues
+const DPR = Math.min(window.devicePixelRatio || 1, 3);
 
 let levelData = null,
   player = null,
@@ -1603,7 +1578,11 @@ let projectiles = [],
   hitEffects = [],
   floatTexts = [],
   particles = [];
+let screenShake = 0;
 
+// ═══════════════════════════════════════════════════════
+//  RESIZE CANVAS — FIXED FULLSCREEN
+// ═══════════════════════════════════════════════════════
 function resizeCanvas() {
   const wrap = document.getElementById("gameWrapper");
   if (
@@ -1611,24 +1590,27 @@ function resizeCanvas() {
     !document.getElementById("gameScreen").classList.contains("active")
   )
     return;
-  const hudH = document.getElementById("hud").offsetHeight || 28;
+  const hudH = document.getElementById("hud").offsetHeight || 36;
   const isMobile = window.matchMedia("(pointer: coarse)").matches;
   const mcH = isMobile ? 110 : 0;
 
   if (!isMobile) {
-    // Desktop: true fullscreen with DPR scaling
+    // Desktop: scale game world (LW x LH) up to fill the full window
     const cssW = window.innerWidth;
     const cssH = window.innerHeight - hudH;
-    // Canvas buffer is DPR× larger for sharpness
+    // Scale factors so the game world fills the screen
+    const scaleX = cssW / LW;
+    const scaleY = cssH / LH;
     canvas.width = Math.round(cssW * DPR);
     canvas.height = Math.round(cssH * DPR);
     canvas.style.width = cssW + "px";
     canvas.style.height = cssH + "px";
-    wrap.style.width = cssW + "px";
-    // Scale all draw calls up by DPR
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    wrap.style.width = "100vw";
+    wrap.style.height = "100vh";
+    // Apply both DPR and game-world scale
+    ctx.setTransform(scaleX * DPR, 0, 0, scaleY * DPR, 0, 0);
   } else {
-    // Mobile: integer scale, also apply DPR
+    // Mobile: integer scale
     const availW = window.innerWidth,
       availH = window.innerHeight - hudH - mcH;
     const cssScale = Math.max(
@@ -1642,6 +1624,7 @@ function resizeCanvas() {
     canvas.style.width = cssW + "px";
     canvas.style.height = cssH + "px";
     wrap.style.width = cssW + "px";
+    wrap.style.height = availH + hudH + "px";
     ctx.setTransform(cssScale * DPR, 0, 0, cssScale * DPR, 0, 0);
   }
 }
@@ -1699,6 +1682,7 @@ function startLevel(idx) {
   invincible = 0;
   combo = 0;
   comboTimer = 0;
+  screenShake = 0;
   projectiles = [];
   hitEffects = [];
   floatTexts = [];
@@ -1780,8 +1764,8 @@ function stopGame() {
 
 function showNoLivesOverlay() {
   const ms = DB.nextLifeIn(currentUser),
-    s = Math.ceil(ms / 1000),
-    mm = String(Math.floor(s / 60)).padStart(2, "0"),
+    s = Math.ceil(ms / 1000);
+  const mm = String(Math.floor(s / 60)).padStart(2, "0"),
     ss2 = String(s % 60).padStart(2, "0");
   document.getElementById("noLivesCountdown").textContent = `${mm}:${ss2}`;
   showScreen("gameScreen");
@@ -1800,8 +1784,6 @@ function loop() {
     animFrame = requestAnimationFrame(loop);
 }
 
-// ─── COLLISION ───
-// ─── COMBO + OBJECTIVE STATE ───
 let combo = 0,
   comboTimer = 0;
 
@@ -1873,14 +1855,13 @@ function update() {
   t++;
   invincible = Math.max(0, invincible - 1);
   comboTimer = Math.max(0, comboTimer - 1);
+  screenShake = Math.max(0, screenShake - 1);
   if (comboTimer === 0 && combo > 0) combo = 0;
 
-  // Survive timer
   if (levelData.objective && levelData.objective.type === "survive") {
     levelData.surviveTimer = (levelData.surviveTimer || 0) + 1;
   }
 
-  // Unlock exit
   if (levelData.exitLocked && checkObjective()) {
     levelData.exitLocked = false;
     floatTexts.push({
@@ -1892,12 +1873,10 @@ function update() {
     });
   }
 
-  // Moving platforms
   levelData.movingPlats.forEach((mp) => {
     mp.cx = mp.ox + Math.sin(t * 0.025 * mp.speed + mp.offset) * mp.range;
   });
 
-  // Crumbling platforms
   if (levelData.crumblePlats) {
     levelData.crumblePlats.forEach((cp) => {
       if (cp.state === "solid") {
@@ -1967,7 +1946,6 @@ function update() {
       player.attacking = true;
       player.attackFrame = 0;
     }
-    // keep attackQueued alive for up to 10 frames so tap is never missed
   }
 
   player.x += player.vx;
@@ -2000,7 +1978,6 @@ function update() {
   }
   camX = Math.max(0, Math.min(player.x - LW / 3, levelData.levelW * TILE - LW));
 
-  // Coins
   levelData.coins.forEach((c) => {
     if (
       !c.collected &&
@@ -2029,7 +2006,6 @@ function update() {
       return;
     }
 
-  // ── ZOMBIE AI ──
   for (const z of levelData.zombies) {
     if (!z.alive) continue;
     z.hitFlash = Math.max(0, z.hitFlash - 1);
@@ -2045,10 +2021,8 @@ function update() {
       const aggro = z.aggroRange || 70;
       const inAggro = dist < aggro;
       if (z.type === 4) {
-        // BOSS
         z.phaseTimer = (z.phaseTimer || 0) + 1;
         const hp_pct = z.hp / z.maxHp;
-        // Phase 2 at 50% HP
         if (hp_pct < 0.5 && z.phase === 1) {
           z.phase = 2;
           screenShake = 16;
@@ -2060,10 +2034,9 @@ function update() {
             life: 80,
           });
         }
-        const spd = z.baseSpd * (z.phase === 2 ? 1.6 : 1);
-        // Charge attack every 180 frames
+        const spd2 = z.baseSpd * (z.phase === 2 ? 1.6 : 1);
         if (z.phaseTimer % 180 === 0) {
-          z.chargeVx = Math.sign(dx) * spd * 4;
+          z.chargeVx = Math.sign(dx) * spd2 * 4;
           z.chargeFrames = 30;
           SFX.bossRoar();
         }
@@ -2072,11 +2045,10 @@ function update() {
           z.chargeFrames--;
           z.facingRight = z.chargeVx > 0;
         } else {
-          z.vx = Math.sign(dx) * spd;
+          z.vx = Math.sign(dx) * spd2;
           z.x += z.vx;
           z.facingRight = z.vx > 0;
         }
-        // Throw rocks when in phase 2
         if (z.phase === 2 && z.throwTimer === 0) {
           [-1, 0, 1].forEach((off) => {
             projectiles.push({
@@ -2096,7 +2068,6 @@ function update() {
           SFX.bossThrow();
         }
       } else if (z.type === 3) {
-        // THROWER
         if (dist < 60) z.vx = -Math.sign(dx) * z.baseSpd;
         else if (!inAggro) z.vx = Math.sign(dx) * z.baseSpd * 0.5;
         else z.vx *= 0.8;
@@ -2139,7 +2110,6 @@ function update() {
     }
   }
 
-  // Projectiles
   projectiles = projectiles.filter((p) => {
     p.x += p.vx;
     p.y += p.vy;
@@ -2184,7 +2154,6 @@ function update() {
     return f.life > 0;
   });
 
-  // Win/locked exit
   const atFlag = player.x >= (levelData.levelW - 3) * TILE;
   if (atFlag && !levelData.exitLocked) triggerWin();
   else if (atFlag && levelData.exitLocked && t % 30 === 0) {
@@ -2312,6 +2281,7 @@ function playerTakeDamage(dmg) {
   invincible = 90;
   combo = 0;
   comboTimer = 0;
+  screenShake = 8;
   SFX.hurt();
   haptic(80);
   hitEffects.push({
@@ -2362,7 +2332,7 @@ function triggerDeath() {
 function triggerWin() {
   gameState = "won";
   DB.saveProgress(currentUser, currentLvlIdx, score);
-  // Store coins earned into wallet
+  // Add coins to wallet and update all displays immediately
   DB.addCoins(currentUser, coinsGot);
   tickLifeTimer();
   const isLast = currentLvlIdx >= TOTAL - 1;
@@ -2379,10 +2349,8 @@ function triggerWin() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  DRAWING  — Subway Surfers–style smooth art
+//  DRAWING
 // ═══════════════════════════════════════════════════════
-
-// rounded rect helper
 function rr(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -2407,23 +2375,18 @@ function glow(x, y, r, color) {
   ctx.fill();
 }
 
-function outline(color, w = 1.5) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = w;
-  ctx.stroke();
-}
-
 function draw() {
   if (!levelData) return;
   const ch = levelData.ch;
-  // Reapply DPR transform in case it was reset
   const isMobile = window.matchMedia("(pointer: coarse)").matches;
   if (!isMobile) {
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const hudH = document.getElementById("hud").offsetHeight || 36;
+    const scaleX = window.innerWidth / LW;
+    const scaleY = (window.innerHeight - hudH) / LH;
+    ctx.setTransform(scaleX * DPR, 0, 0, scaleY * DPR, 0, 0);
   }
   ctx.clearRect(0, 0, LW, LH);
 
-  // Rich sky gradient
   const sg = ctx.createLinearGradient(0, 0, 0, LH);
   sg.addColorStop(0, ch.sky1);
   sg.addColorStop(0.6, ch.sky2);
@@ -2433,8 +2396,14 @@ function draw() {
 
   drawBgDecor();
 
+  // Screen shake
+  const shakeX =
+    screenShake > 0 ? (Math.random() - 0.5) * screenShake * 0.5 : 0;
+  const shakeY =
+    screenShake > 0 ? (Math.random() - 0.5) * screenShake * 0.5 : 0;
+
   ctx.save();
-  ctx.translate(-Math.round(camX), 0);
+  ctx.translate(-Math.round(camX) + shakeX, shakeY);
   drawGround(ch);
   drawPlatforms(ch);
   drawMovingPlatforms(ch);
@@ -2455,10 +2424,8 @@ function draw() {
   drawBossBar();
 }
 
-// ── Background ──────────────────────────────────────────────
 function drawBgDecor() {
   const ci = levelData.chIdx;
-  // Parallax city buildings
   if ([0, 2, 5, 8, 9].includes(ci)) {
     const bDefs = [
       [30, 70, 28],
@@ -2470,7 +2437,6 @@ function drawBgDecor() {
     ];
     bDefs.forEach(([bx, bh, bw], i) => {
       const sx = ((((bx - camX * 0.12 + 700) % 720) + 720) % 720) - 40;
-      const grad = ctx.createLinearGradient(sx, LH - bh, sx + bw, LH);
       const bc =
         ci === 9
           ? "#1a001a"
@@ -2487,12 +2453,12 @@ function drawBgDecor() {
             : ci === 8
               ? "#3a2a0a"
               : "#1a3a4a";
+      const grad = ctx.createLinearGradient(sx, LH - bh, sx + bw, LH);
       grad.addColorStop(0, bc2);
       grad.addColorStop(1, bc);
       ctx.fillStyle = grad;
       rr(sx, LH - bh - 10, bw, bh + 10, 3);
       ctx.fill();
-      // windows
       for (let wy = LH - bh + 4; wy < LH - 12; wy += 9)
         for (let wx = sx + 4; wx < sx + bw - 4; wx += 7)
           if ((wx + wy + ci) % 3 !== 0) {
@@ -2501,50 +2467,6 @@ function drawBgDecor() {
           }
     });
   }
-  // Subway tunnel walls
-  if (ci === 1) {
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
-    ctx.fillRect(0, 0, LW, LH);
-    for (let i = 0; i < 5; i++) {
-      const bx = (((i * 96 - camX * 0.08 + 500) % 500) + 500) % 500;
-      const tg = ctx.createLinearGradient(bx, 0, bx + 6, 0);
-      tg.addColorStop(0, "#3a3a55");
-      tg.addColorStop(1, "transparent");
-      ctx.fillStyle = tg;
-      ctx.fillRect(bx, 0, 6, LH);
-    }
-    for (let i = 0; i < 4; i++) {
-      const lx = (((i * 120 - camX * 0.25 + 500) % 500) + 500) % 500;
-      ctx.fillStyle = "#ffffc0";
-      ctx.fillRect(lx + 50, 2, 10, 5);
-      glow(lx + 55, 4, 20, "rgba(255,255,180,0.12)");
-    }
-  }
-  // Sewer drips
-  if (ci === 3) {
-    for (let i = 0; i < 10; i++) {
-      const dx = (i * 50 + t * 0.4) % LW,
-        dy = (t * 0.6 + i * 25) % LH;
-      const dg = ctx.createLinearGradient(dx, 0, dx, dy);
-      dg.addColorStop(0, "transparent");
-      dg.addColorStop(1, "rgba(50,200,50,0.6)");
-      ctx.strokeStyle = "rgba(50,200,50,0.4)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(dx, 0);
-      ctx.lineTo(dx, dy);
-      ctx.stroke();
-    }
-  }
-  // Lava embers
-  if (ci === 3) {
-    for (let i = 0; i < 16; i++) {
-      const ex = (i * 47 + t * 0.5) % LW,
-        ey = LH - 10 - ((t * 0.8 + i * 18) % LH);
-      glow(ex, ey, 4 + Math.sin(t * 0.1 + i) * 2, "rgba(255,120,0,0.3)");
-    }
-  }
-  // Clouds for outdoor chapters
   if ([0, 2, 5, 6].includes(ci)) {
     [40, 150, 260, 370, 470].forEach((bx, i) => {
       const cx2 = ((((bx - camX * 0.18 + 620) % 640) + 640) % 640) - 60;
@@ -2552,24 +2474,6 @@ function drawBgDecor() {
         cr = ci === 5 ? 0.95 : 0.75;
       drawCloud(cx2, cy, 55 + i * 8, cr);
     });
-  }
-  // Graveyard fog
-  if (ci === 7) {
-    for (let i = 0; i < 3; i++) {
-      const fx2 = ((((i * 200 - camX * 0.05 + 700) % 700) + 700) % 700) - 100;
-      const fg = ctx.createRadialGradient(
-        fx2 + 100,
-        LH - 20,
-        0,
-        fx2 + 100,
-        LH - 20,
-        100,
-      );
-      fg.addColorStop(0, "rgba(100,120,80,0.18)");
-      fg.addColorStop(1, "transparent");
-      ctx.fillStyle = fg;
-      ctx.fillRect(fx2, LH - 60, 200, 60);
-    }
   }
 }
 
@@ -2592,86 +2496,40 @@ function drawCloud(x, y, w, alpha) {
   ctx.restore();
 }
 
-// ── Ground ──────────────────────────────────────────────────
 function drawGround(ch) {
   const G = levelData.GROUND_Y,
     LWW = levelData.levelW;
   const gw = LWW * TILE,
     gy = G * TILE;
-  const ci = levelData.chIdx;
-
-  // Main ground fill
   const gg = ctx.createLinearGradient(0, gy, 0, gy + TILE * 3);
   gg.addColorStop(0, ch.ground);
   gg.addColorStop(0.15, ch.platTop || ch.ground);
   gg.addColorStop(1, ch.dirt);
   ctx.fillStyle = gg;
   ctx.fillRect(0, gy, gw, TILE * 4);
-
-  // Surface line with sheen
   const shine = ctx.createLinearGradient(0, gy, 0, gy + 5);
   shine.addColorStop(0, "rgba(255,255,255,0.35)");
   shine.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = shine;
   ctx.fillRect(0, gy, gw, 5);
-
-  // Chapter-specific surface details
-  if (ci === 0) {
-    // Road: lane markings
-    ctx.strokeStyle = "rgba(255,255,180,0.3)";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([20, 16]);
-    ctx.beginPath();
-    ctx.moveTo(0, gy + 8);
-    ctx.lineTo(gw, gy + 8);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  if (ci === 1) {
-    // Subway rails
-    ctx.strokeStyle = "rgba(180,180,220,0.5)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, gy + 4);
-    ctx.lineTo(gw, gy + 4);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, gy + 12);
-    ctx.lineTo(gw, gy + 12);
-    ctx.stroke();
-    // rail ties
-    for (let i = 0; i < LWW; i += 2) {
-      ctx.fillStyle = "rgba(100,80,60,0.4)";
-      ctx.fillRect(i * TILE, gy, TILE - 2, TILE);
-    }
-  }
-  if (ci === 3 || ci === 2) {
-    // wet ground reflections
-    for (let i = 0; i < LWW; i += 3) {
-      ctx.fillStyle = `rgba(100,200,100,${0.06 + Math.sin(t * 0.04 + i) * 0.03})`;
-      ctx.fillRect(i * TILE, gy, TILE * 2, 4);
-    }
-  }
 }
 
-// ── Platforms ───────────────────────────────────────────────
 function drawPlatforms(ch) {
   levelData.platforms.forEach((p) => {
-    const x = p.tx * TILE,
-      y = p.ty * TILE,
-      w = p.len * TILE,
-      h = TILE;
-    drawPlatBlock(x, y, w, h, ch, false);
+    drawPlatBlock(p.tx * TILE, p.ty * TILE, p.len * TILE, TILE, ch, false);
   });
 }
 
 function drawMovingPlatforms(ch) {
   levelData.movingPlats.forEach((mp) => {
-    const x = Math.round(mp.cx),
-      y = mp.ty * TILE,
-      w = mp.len * TILE,
-      h = TILE;
-    drawPlatBlock(x, y, w, h, ch, true);
+    drawPlatBlock(
+      Math.round(mp.cx),
+      mp.ty * TILE,
+      mp.len * TILE,
+      TILE,
+      ch,
+      true,
+    );
   });
 }
 
@@ -2686,23 +2544,17 @@ function drawCrumblePlatforms(ch) {
     const shake = cp.state === "shaking" ? Math.sin(t * 0.8) * 3 : 0;
     ctx.save();
     ctx.translate(shake, 0);
-
-    // Crumble platforms are orange/warning colored
     const pg = ctx.createLinearGradient(x, y, x, y + h);
     pg.addColorStop(0, "#ff9500");
     pg.addColorStop(1, "#cc5500");
     ctx.fillStyle = pg;
     rr(x, y, w, h, 4);
     ctx.fill();
-
-    // Warning stripes on top
     ctx.fillStyle =
       cp.state === "shaking" ? "rgba(255,50,0,0.6)" : "rgba(255,200,0,0.5)";
     for (let i = 0; i < cp.len; i++) {
       if (i % 2 === 0) ctx.fillRect(x + i * TILE, y, TILE, 3);
     }
-
-    // Cracks when shaking
     if (cp.state === "shaking") {
       ctx.strokeStyle = "rgba(0,0,0,0.5)";
       ctx.lineWidth = 1;
@@ -2714,9 +2566,6 @@ function drawCrumblePlatforms(ch) {
       ctx.moveTo(x + w * 0.6, y + 2);
       ctx.lineTo(x + w * 0.55, y + h - 2);
       ctx.stroke();
-    }
-    // Timer bar
-    if (cp.state === "shaking") {
       const pct = cp.timer / 40;
       ctx.fillStyle = `rgba(255,${Math.floor(pct * 200)},0,0.8)`;
       ctx.fillRect(x, y - 3, w * pct, 2);
@@ -2726,12 +2575,9 @@ function drawCrumblePlatforms(ch) {
 }
 
 function drawPlatBlock(x, y, w, h, ch, moving) {
-  // Shadow underneath
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   rr(x + 3, y + h + 1, w - 6, 5, 3);
   ctx.fill();
-
-  // Body gradient
   const pg = ctx.createLinearGradient(x, y, x, y + h);
   pg.addColorStop(0, ch.platTop || lightenColor(ch.plat, 30));
   pg.addColorStop(0.3, ch.plat);
@@ -2739,22 +2585,16 @@ function drawPlatBlock(x, y, w, h, ch, moving) {
   ctx.fillStyle = pg;
   rr(x, y, w, h, 4);
   ctx.fill();
-
-  // Top sheen
   const sg = ctx.createLinearGradient(x, y, x, y + 6);
   sg.addColorStop(0, "rgba(255,255,255,0.4)");
   sg.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = sg;
   rr(x + 1, y + 1, w - 2, 6, 3);
   ctx.fill();
-
-  // Outline
   ctx.strokeStyle = "rgba(0,0,0,0.25)";
   ctx.lineWidth = 1.5;
   rr(x, y, w, h, 4);
   ctx.stroke();
-
-  // Moving glow
   if (moving) {
     ctx.strokeStyle = "rgba(0,220,255,0.5)";
     ctx.lineWidth = 1;
@@ -2763,7 +2603,6 @@ function drawPlatBlock(x, y, w, h, ch, moving) {
   }
 }
 
-// ── Spikes ──────────────────────────────────────────────────
 function drawSpikes(ch) {
   levelData.spikes.forEach((s) => {
     const sg = ctx.createLinearGradient(s.x + 4, s.y, s.x + 4, s.y + 10);
@@ -2779,7 +2618,6 @@ function drawSpikes(ch) {
     ctx.strokeStyle = "#999";
     ctx.lineWidth = 0.8;
     ctx.stroke();
-    // shine
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.beginPath();
     ctx.moveTo(s.x + 4, s.y + 1);
@@ -2790,7 +2628,6 @@ function drawSpikes(ch) {
   });
 }
 
-// ── Z-Coins ─────────────────────────────────────────────────
 function drawCoins() {
   levelData.coins.forEach((c) => {
     if (c.collected) return;
@@ -2799,11 +2636,7 @@ function drawCoins() {
       cy = c.y + 4 + bob;
     const spin = Math.abs(Math.sin(t * 0.04 + c.x * 0.02));
     const cw = 8 * spin + 2;
-
-    // Outer glow
     glow(cx2, cy, 14, "rgba(255,210,40,0.2)");
-
-    // Coin body
     ctx.save();
     ctx.translate(cx2, cy);
     const cg = ctx.createRadialGradient(-cw * 0.2, -3, 0, 0, 0, cw * 0.9);
@@ -2814,13 +2647,11 @@ function drawCoins() {
     ctx.beginPath();
     ctx.ellipse(0, 0, cw, 7, 0, 0, Math.PI * 2);
     ctx.fill();
-    // rim
     ctx.strokeStyle = "#b8860b";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.ellipse(0, 0, cw, 7, 0, 0, Math.PI * 2);
     ctx.stroke();
-    // Z letter (only when facing front)
     if (spin > 0.5) {
       ctx.fillStyle = "#a06000";
       ctx.font = "bold 7px sans-serif";
@@ -2828,7 +2659,6 @@ function drawCoins() {
       ctx.textBaseline = "middle";
       ctx.fillText("Z", 0, 0.5);
     }
-    // shine
     ctx.fillStyle = "rgba(255,255,255,0.55)";
     ctx.beginPath();
     ctx.ellipse(-cw * 0.2, -2, cw * 0.3, 2.5, 0, 0, Math.PI * 2);
@@ -2837,7 +2667,6 @@ function drawCoins() {
   });
 }
 
-// ── Zombies ──────────────────────────────────────────────────
 const ZOMBIE_PALETTES = [
   {
     skin: "#5a8c5a",
@@ -2919,7 +2748,6 @@ function drawZombies() {
       return;
     }
     drawZombieSprite(z);
-    // HP bar
     if (z.maxHp > 1) {
       const bw = 20,
         bx = z.x - 1,
@@ -2945,16 +2773,11 @@ function drawZombieSprite(z) {
   const bob = Math.sin(t * 0.1) * 1.2;
   const armSway = Math.sin(t * 0.09) * 3;
   const fr = z.facingRight;
-
   ctx.save();
-
-  // Shadow
   ctx.fillStyle = "rgba(0,0,0,0.25)";
   ctx.beginPath();
   ctx.ellipse(x + 9, y + 24, 9, 3, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  // LEGS
   const legG = ctx.createLinearGradient(x, y + 16, x, y + 26);
   legG.addColorStop(0, flash ? "#ff3355" : pal.pants);
   legG.addColorStop(1, flash ? "#ff1133" : shadeColor(pal.pants, -20));
@@ -2963,47 +2786,29 @@ function drawZombieSprite(z) {
   ctx.fill();
   rr(x + 9, y + 15 + bob, 6, 8 + (walk ? 0 : 2), 3);
   ctx.fill();
-  // shoes
   ctx.fillStyle = flash ? "#ff4455" : "#1a1a1a";
   rr(x + (walk ? 1 : 2), y + 22 + bob, 7, 4, 2);
   ctx.fill();
   rr(x + (walk ? 9 : 8), y + 22 + bob, 7, 4, 2);
   ctx.fill();
-
-  // BODY
   const bodyG = ctx.createLinearGradient(x, y + 7, x + 18, y + 17);
   bodyG.addColorStop(0, flash ? "#ff4466" : lightenColor(pal.shirt, 15));
   bodyG.addColorStop(1, flash ? "#cc2244" : pal.shirt);
   ctx.fillStyle = bodyG;
   rr(x + 1, y + 7 + bob, 16, 10, 4);
   ctx.fill();
-  // shirt highlight
   ctx.fillStyle = "rgba(255,255,255,0.12)";
   rr(x + 3, y + 8 + bob, 12, 3, 2);
   ctx.fill();
-  // ripped shirt details
-  ctx.strokeStyle = "rgba(0,0,0,0.2)";
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(x + 6, y + 12 + bob);
-  ctx.lineTo(x + 8, y + 16 + bob);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + 12, y + 10 + bob);
-  ctx.lineTo(x + 10, y + 15 + bob);
-  ctx.stroke();
-
-  // ARMS (outstretched zombie reach)
   const armG = ctx.createLinearGradient(x, y + 7, x, y + 14);
   armG.addColorStop(0, flash ? "#ff4466" : pal.skin);
   armG.addColorStop(1, flash ? "#cc2244" : pal.skinD);
   ctx.fillStyle = armG;
   if (fr) {
     rr(x + 15, y + 6 + bob - armSway, 8, 5, 3);
-    ctx.fill(); // front arm reaching
+    ctx.fill();
     rr(x - 5, y + 9 + bob, 6, 4, 3);
-    ctx.fill(); // back arm
-    // claws
+    ctx.fill();
     ctx.fillStyle = flash ? "#ff4466" : "#2a2a1a";
     [0, 3, 6].forEach((off) => {
       ctx.beginPath();
@@ -3027,8 +2832,6 @@ function drawZombieSprite(z) {
       ctx.fill();
     });
   }
-
-  // HEAD
   const headG = ctx.createRadialGradient(
     x + 9,
     y + 4 + bob,
@@ -3046,8 +2849,6 @@ function drawZombieSprite(z) {
   ctx.lineWidth = 1;
   rr(x + 2, y + bob, 14, 10, 5);
   ctx.stroke();
-
-  // Messy hair
   if (!flash) {
     ctx.fillStyle = pal.hair;
     rr(x + 2, y - 2 + bob, 14, 4, 3);
@@ -3062,9 +2863,6 @@ function drawZombieSprite(z) {
     ctx.ellipse(x + 13, y - 2 + bob, 2, 2.5, 0.3, 0, Math.PI * 2);
     ctx.fill();
   }
-
-  // GLOWING EYES
-  // whites
   ctx.fillStyle = "#fff";
   ctx.beginPath();
   ctx.ellipse(x + 5.5, y + 3.5 + bob, 2.5, 2, 0, 0, Math.PI * 2);
@@ -3072,7 +2870,6 @@ function drawZombieSprite(z) {
   ctx.beginPath();
   ctx.ellipse(x + 11.5, y + 3.5 + bob, 2.5, 2, 0, 0, Math.PI * 2);
   ctx.fill();
-  // red pupils
   ctx.fillStyle = flash ? "#ff8888" : "#cc0000";
   ctx.beginPath();
   ctx.arc(x + 5.5, y + 3.5 + bob, 1.3, 0, Math.PI * 2);
@@ -3080,18 +2877,14 @@ function drawZombieSprite(z) {
   ctx.beginPath();
   ctx.arc(x + 11.5, y + 3.5 + bob, 1.3, 0, Math.PI * 2);
   ctx.fill();
-  // glow aura
   if (!flash) {
     glow(x + 5.5, y + 3.5 + bob, 5, "rgba(255,0,0,0.25)");
     glow(x + 11.5, y + 3.5 + bob, 5, "rgba(255,0,0,0.25)");
   }
-
-  // Rotten mouth / teeth
   ctx.fillStyle = flash ? "#ff2244" : "#2a0a0a";
   ctx.beginPath();
   ctx.ellipse(x + 9, y + 7.5 + bob, 4, 2, 0, 0, Math.PI * 2);
   ctx.fill();
-  // jagged teeth
   ctx.fillStyle = "#e8e0d0";
   [
     [x + 6, y + 6.5 + bob],
@@ -3106,29 +2899,24 @@ function drawZombieSprite(z) {
     ctx.closePath();
     ctx.fill();
   });
-
   ctx.restore();
 }
 
-// ── Player ──────────────────────────────────────────────────
 function drawBossSprite(z) {
   const x = z.x - 16,
-    y = z.y - 16; // boss is 2× bigger
+    y = z.y - 16;
   const flash = z.hitFlash > 0;
   const bob = Math.sin(t * 0.08) * 2;
   const enraged = z.phase === 2;
-  // Aura
   if (enraged) {
     glow(x + 25, y + 22, 30, "rgba(255,0,0,0.2)");
   } else {
     glow(x + 25, y + 22, 24, "rgba(255,100,0,0.15)");
   }
-  // Shadow
   ctx.fillStyle = "rgba(0,0,0,0.4)";
   ctx.beginPath();
   ctx.ellipse(x + 25, y + 46, 18, 5, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Legs
   const walk = Math.floor(t * 0.1) % 2;
   ctx.fillStyle = flash ? "#ff3333" : enraged ? "#5a0000" : "#2a1a0a";
   rr(x + 8, y + 32 + bob, 10, 14 + (walk ? 3 : 0), 4);
@@ -3140,7 +2928,6 @@ function drawBossSprite(z) {
   ctx.fill();
   rr(x + 22, y + 44 + bob + (walk ? 0 : 3), 12, 6, 3);
   ctx.fill();
-  // Body
   const bodyG = ctx.createLinearGradient(x, y + 16, x + 50, y + 34);
   bodyG.addColorStop(0, flash ? "#ff4444" : enraged ? "#8a1010" : "#4a2010");
   bodyG.addColorStop(1, flash ? "#cc2222" : enraged ? "#5a0808" : "#2a1008");
@@ -3150,7 +2937,6 @@ function drawBossSprite(z) {
   ctx.fillStyle = "rgba(255,255,255,0.1)";
   rr(x + 8, y + 16 + bob, 34, 6, 4);
   ctx.fill();
-  // Arms
   const armSway = Math.sin(t * 0.07) * 4;
   ctx.fillStyle = flash ? "#ff4444" : enraged ? "#7a0808" : "#3a1808";
   if (z.facingRight) {
@@ -3158,7 +2944,6 @@ function drawBossSprite(z) {
     ctx.fill();
     rr(x - 8, y + 18 + bob, 12, 6, 4);
     ctx.fill();
-    // Claw
     ctx.fillStyle = "#111";
     [0, 4, 8].forEach((off) => {
       ctx.beginPath();
@@ -3183,7 +2968,6 @@ function drawBossSprite(z) {
       ctx.fill();
     });
   }
-  // Head — huge
   const hg = ctx.createRadialGradient(
     x + 22,
     y + 6 + bob,
@@ -3201,7 +2985,6 @@ function drawBossSprite(z) {
   ctx.lineWidth = 1.5;
   rr(x + 6, y - 4 + bob, 36, 22, 10);
   ctx.stroke();
-  // Crown/spikes
   ctx.fillStyle = enraged ? "#ff0000" : "#ff6600";
   [-8, -4, 0, 4, 8].forEach((ox, i) => {
     ctx.beginPath();
@@ -3211,7 +2994,6 @@ function drawBossSprite(z) {
     ctx.closePath();
     ctx.fill();
   });
-  // Eyes — BIG glowing
   ctx.fillStyle = "#fff";
   ctx.beginPath();
   ctx.ellipse(x + 14, y + 4 + bob, 5, 4, 0, 0, Math.PI * 2);
@@ -3238,7 +3020,6 @@ function drawBossSprite(z) {
     8,
     enraged ? "rgba(255,0,0,0.5)" : "rgba(200,50,0,0.3)",
   );
-  // Mouth
   ctx.fillStyle = "#2a0000";
   ctx.beginPath();
   ctx.ellipse(x + 22, y + 13 + bob, 8, 4, 0, 0, Math.PI * 2);
@@ -3258,7 +3039,6 @@ function drawBossSprite(z) {
     ctx.closePath();
     ctx.fill();
   });
-  // Type label
   ctx.fillStyle = enraged ? "#ff0000" : "#ff6600";
   ctx.font = "bold 7px 'Nunito',sans-serif";
   ctx.textAlign = "center";
@@ -3322,7 +3102,6 @@ function drawWeaponShape(w, dir) {
     ctx.fill();
     glow(0, 6, 8, w.color + "88");
   } else {
-    // bat
     const bg = ctx.createLinearGradient(-2, 0, 2, 20);
     bg.addColorStop(0, lightenColor("#c8a060", 20));
     bg.addColorStop(1, "#8B5e3c");
@@ -3343,27 +3122,20 @@ function drawWeaponShape(w, dir) {
 function drawCharSmooth(x, y, ch, fr, jumping, t2) {
   const walk = Math.floor(t2 * 0.16) % 2;
   const bob = jumping ? 0 : Math.sin(t2 * 0.2) * 0.6;
-  const lean = fr ? 2 : -2;
-
   ctx.save();
-
-  // Shadow
   ctx.fillStyle = "rgba(0,0,0,0.2)";
   ctx.beginPath();
   ctx.ellipse(x + 8, y + 24, 7, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  // SHOES
   const shoeG = ctx.createLinearGradient(x, y + 20, x, y + 25);
-  shoeG.addColorStop(0, lightenColor(ch.shoe || ch.shoes || "#222", 20));
-  shoeG.addColorStop(1, ch.shoe || ch.shoes || "#222");
+  shoeG.addColorStop(0, lightenColor(ch.shoe || "#222", 20));
+  shoeG.addColorStop(1, ch.shoe || "#222");
   ctx.fillStyle = shoeG;
   if (!jumping) {
     rr(x + (walk ? 0 : 1), y + 20 + bob, 7, 5, 3);
     ctx.fill();
     rr(x + (walk ? 8 : 9), y + 20 + bob, 7, 5, 3);
     ctx.fill();
-    // sole
     ctx.fillStyle = "rgba(255,255,255,0.2)";
     ctx.fillRect(x + (walk ? 1 : 2), y + 23 + bob, 5, 1);
     ctx.fillRect(x + (walk ? 9 : 10), y + 23 + bob, 5, 1);
@@ -3373,8 +3145,6 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
     rr(x + 9, y + 19, 6, 5, 3);
     ctx.fill();
   }
-
-  // PANTS
   const pantsG = ctx.createLinearGradient(x, y + 13, x + 16, y + 22);
   pantsG.addColorStop(0, lightenColor(ch.pants, 15));
   pantsG.addColorStop(1, ch.pants);
@@ -3384,7 +3154,6 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
     ctx.fill();
     rr(x + 8, y + 13 + bob, 6, 8 + (walk ? 0 : 2), 3);
     ctx.fill();
-    // pants shine
     ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fillRect(x + 3, y + 13 + bob, 3, 5);
   } else {
@@ -3393,37 +3162,28 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
     rr(x + 8, y + 13, 6, 6, 3);
     ctx.fill();
   }
-
-  // BELT
   ctx.fillStyle = "#222";
   ctx.fillRect(x + 1, y + 12 + bob, 15, 2);
   ctx.fillStyle = "#ffd700";
-  ctx.fillRect(x + 6, y + 12 + bob, 5, 2); // buckle
-
-  // SHIRT / BODY
+  ctx.fillRect(x + 6, y + 12 + bob, 5, 2);
   const shirtG = ctx.createLinearGradient(x, y + 6, x + 16, y + 14);
   shirtG.addColorStop(0, lightenColor(ch.shirt, 25));
   shirtG.addColorStop(1, ch.shirt);
   ctx.fillStyle = shirtG;
   rr(x, y + 6 + bob, 16, 8, 3);
   ctx.fill();
-  // shirt highlight
   ctx.fillStyle = "rgba(255,255,255,0.2)";
   rr(x + 2, y + 7 + bob, 12, 2, 2);
   ctx.fill();
-  // outline
   ctx.strokeStyle = "rgba(0,0,0,0.18)";
   ctx.lineWidth = 1;
   rr(x, y + 6 + bob, 16, 8, 3);
   ctx.stroke();
-
-  // ARMS
   ctx.fillStyle = shirtG;
   rr(x - 3, y + 6 + bob, 4, 7, 2);
   ctx.fill();
   rr(x + 15, y + 6 + bob, 4, 7, 2);
   ctx.fill();
-  // hands
   const skinG = ctx.createRadialGradient(x + 2, y + 12, 0, x + 2, y + 12, 4);
   skinG.addColorStop(0, lightenColor(ch.skin, 20));
   skinG.addColorStop(1, ch.skin);
@@ -3434,20 +3194,15 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
   ctx.beginPath();
   ctx.arc(fr ? x + 17 : x - 1, y + 13 + bob, 3.5, 0, Math.PI * 2);
   ctx.fill();
-
-  // NECK
   ctx.fillStyle = ch.skin;
   rr(x + 5, y + 3 + bob, 6, 5, 2);
   ctx.fill();
-
-  // HEAD
   const hg = ctx.createRadialGradient(x + 7, y + bob, 1, x + 8, y + 1 + bob, 8);
   hg.addColorStop(0, lightenColor(ch.skin, 25));
   hg.addColorStop(1, ch.skin);
   ctx.fillStyle = hg;
   rr(x + 1, y + bob, 14, 10, 5);
   ctx.fill();
-  // face shine
   ctx.fillStyle = "rgba(255,255,255,0.15)";
   ctx.beginPath();
   ctx.ellipse(x + 6, y + 2 + bob, 3, 2.5, -0.3, 0, Math.PI * 2);
@@ -3456,27 +3211,17 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
   ctx.lineWidth = 0.8;
   rr(x + 1, y + bob, 14, 10, 5);
   ctx.stroke();
-
-  // HAIR
   const hairG = ctx.createLinearGradient(x, y - 2 + bob, x, y + 3 + bob);
   hairG.addColorStop(0, lightenColor(ch.hair, 15));
   hairG.addColorStop(1, ch.hair);
   ctx.fillStyle = hairG;
   rr(x + 1, y - 2 + bob, 14, 5, 4);
   ctx.fill();
-  // character-specific hair
-  if (ch.id === "mia" || ch.id === "nova") {
-    ctx.beginPath();
-    ctx.ellipse(x + 14, y + 3 + bob, 2, 5, 0.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
   if (ch.id === "blaze") {
     ctx.fillStyle = "#ff6600";
     rr(x + 8, y - 5 + bob, 6, 5, 3);
     ctx.fill();
   }
-
-  // EYES
   ctx.fillStyle = "#fff";
   const ex = fr ? x + 8 : x + 4;
   ctx.beginPath();
@@ -3492,7 +3237,6 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
   ctx.beginPath();
   ctx.arc(ex + 5.5, y + 4.5 + bob, 1.5, 0, Math.PI * 2);
   ctx.fill();
-  // eye shine
   ctx.fillStyle = "#fff";
   ctx.beginPath();
   ctx.arc(ex + 1, y + 3.8 + bob, 0.7, 0, Math.PI * 2);
@@ -3500,8 +3244,6 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
   ctx.beginPath();
   ctx.arc(ex + 6, y + 3.8 + bob, 0.7, 0, Math.PI * 2);
   ctx.fill();
-
-  // MOUTH
   ctx.strokeStyle = "#8B3A3A";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
@@ -3511,11 +3253,9 @@ function drawCharSmooth(x, y, ch, fr, jumping, t2) {
     ctx.arc(x + 8, y + 7.5 + bob, 1.8, -0.3, Math.PI + 0.3, true);
   }
   ctx.stroke();
-
   ctx.restore();
 }
 
-// ── Projectiles ─────────────────────────────────────────────
 function drawProjectiles() {
   projectiles.forEach((p) => {
     ctx.save();
@@ -3544,7 +3284,6 @@ function drawProjectiles() {
   });
 }
 
-// ── Hit Effects ─────────────────────────────────────────────
 function drawHitEffects() {
   hitEffects.forEach((e) => {
     ctx.save();
@@ -3555,15 +3294,12 @@ function drawHitEffects() {
   });
 }
 
-// ── Float Texts ─────────────────────────────────────────────
 function drawFloatTexts() {
   floatTexts.forEach((f) => {
     ctx.save();
-    const alpha = Math.min(1, f.life / 20);
-    ctx.globalAlpha = alpha;
+    ctx.globalAlpha = Math.min(1, f.life / 20);
     ctx.font = "bold 11px 'Fredoka One',sans-serif";
     ctx.textAlign = "center";
-    // outline
     ctx.strokeStyle = "rgba(0,0,0,0.6)";
     ctx.lineWidth = 3;
     ctx.strokeText(f.text, f.x - camX + 4, f.y);
@@ -3573,21 +3309,18 @@ function drawFloatTexts() {
   });
 }
 
-// ── Player HP bar ───────────────────────────────────────────
 function drawPlayerHPBar() {
   if (!player) return;
   const bw = 70,
     bh = 7,
     bx = LW / 2 - 35,
     by = LH - 12;
-  // bg
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   rr(bx - 1, by - 1, bw + 2, bh + 2, 4);
   ctx.fill();
   ctx.fillStyle = "#222";
   rr(bx, by, bw, bh, 3);
   ctx.fill();
-  // bar
   const pct = Math.max(0, player.hp / player.maxHp);
   const barG = ctx.createLinearGradient(bx, by, bx + bw * pct, by);
   barG.addColorStop(
@@ -3601,35 +3334,29 @@ function drawPlayerHPBar() {
   ctx.fillStyle = barG;
   rr(bx, by, bw * pct, bh, 3);
   ctx.fill();
-  // sheen
   ctx.fillStyle = "rgba(255,255,255,0.2)";
   rr(bx, by, bw * pct, bh / 2, 3);
   ctx.fill();
-  // label
   ctx.fillStyle = "rgba(255,255,255,0.7)";
   ctx.font = "bold 6px sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(`HP ${player.hp}/${player.maxHp}`, LW / 2, by - 2);
 }
 
-// ── Goal Flag ───────────────────────────────────────────────
 function drawGoalFlag() {
   const fx = (levelData.levelW - 3) * TILE,
     gy = levelData.GROUND_Y * TILE;
-  // Base
   const baseG = ctx.createLinearGradient(fx, gy - 4, fx + 16, gy);
   baseG.addColorStop(0, "#888");
   baseG.addColorStop(1, "#444");
   ctx.fillStyle = baseG;
   rr(fx + 2, gy - 5, 16, 5, 2);
   ctx.fill();
-  // Pole
   const poleG = ctx.createLinearGradient(fx + 7, 0, fx + 9, 0);
   poleG.addColorStop(0, "#ddd");
   poleG.addColorStop(1, "#888");
   ctx.fillStyle = poleG;
   ctx.fillRect(fx + 7, gy - 58, 2, 58);
-  // Waving flag
   ctx.save();
   for (let row = 0; row < 12; row++) {
     const wave = Math.sin(t * 0.1 + row * 0.4) * 4;
@@ -3639,17 +3366,14 @@ function drawGoalFlag() {
     ctx.fillStyle = grad;
     ctx.fillRect(fx + 9, gy - 58 + row * 2, 20 + wave, 2);
   }
-  // Z on flag
   ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.font = "bold 9px 'Fredoka One',sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("Z", fx + 19, gy - 46);
-  // glow on flag
   glow(fx + 19, gy - 50, 12, "rgba(255,80,80,0.2)");
   ctx.restore();
 }
 
-// ── Color utils ─────────────────────────────────────────────
 function drawObjectiveHUD() {
   if (!levelData || !levelData.objective) return;
   const txt = getObjectiveHUD();
@@ -3658,7 +3382,6 @@ function drawObjectiveHUD() {
     pad = 6;
   ctx.font = "bold 9px 'Nunito',sans-serif";
   const tw = ctx.measureText(txt).width;
-  // Background pill
   ctx.fillStyle = levelData.exitLocked
     ? "rgba(239,35,60,0.85)"
     : "rgba(6,214,160,0.85)";
@@ -3678,7 +3401,6 @@ function drawComboMeter() {
   const alpha = Math.min(1, comboTimer / 30);
   ctx.save();
   ctx.globalAlpha = alpha;
-  // Flash bigger on new combo
   const scale = 1 + (comboTimer > 100 ? 0.3 : 0);
   ctx.translate(x + 35, y + 10);
   ctx.scale(scale, scale);
@@ -3708,7 +3430,7 @@ function lightenColor(hex, amt) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  SOUND ENGINE  (Web Audio API — no files needed)
+//  SOUND ENGINE
 // ═══════════════════════════════════════════════════════
 const SFX = (() => {
   let ctx2 = null;
@@ -3861,19 +3583,14 @@ function drawBossBar() {
   if (!levelData || !levelData.isBossLevel) return;
   const boss = levelData.zombies.find((z) => z.type === 4);
   if (!boss || !boss.alive) return;
-
   const bw = LW * 0.6,
     bh = 12,
     bx = LW / 2 - bw / 2,
     by = LH - 24;
   const pct = Math.max(0, boss.hp / boss.maxHp);
-
-  // Background
   ctx.fillStyle = "rgba(0,0,0,0.6)";
   rr(bx - 2, by - 16, bw + 4, bh + 20, 6);
   ctx.fill();
-
-  // Label
   ctx.fillStyle = "#ff4444";
   ctx.font = "bold 9px 'Nunito',sans-serif";
   ctx.textAlign = "center";
@@ -3882,26 +3599,18 @@ function drawBossBar() {
     LW / 2,
     by - 4,
   );
-
-  // Bar track
   ctx.fillStyle = "#333";
   rr(bx, by, bw, bh, 4);
   ctx.fill();
-
-  // Bar fill — red → orange based on phase
   const barG = ctx.createLinearGradient(bx, by, bx + bw * pct, by);
   barG.addColorStop(0, boss.phase === 2 ? "#ff0000" : "#ff6b35");
   barG.addColorStop(1, boss.phase === 2 ? "#ff6600" : "#ffd23f");
   ctx.fillStyle = barG;
   rr(bx, by, bw * pct, bh, 4);
   ctx.fill();
-
-  // Sheen
   ctx.fillStyle = "rgba(255,255,255,0.2)";
   rr(bx, by, bw * pct, bh / 2, 4);
   ctx.fill();
-
-  // Phase marker at 50%
   ctx.strokeStyle = "rgba(255,255,255,0.4)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -3912,10 +3621,10 @@ function drawBossBar() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  LEADERBOARD  (top 10 scores per level from Supabase)
+//  LEADERBOARD
 // ═══════════════════════════════════════════════════════
 async function showLeaderboard(levelIdx) {
-  renderLeaderboard(levelIdx, null); // show loading state first
+  renderLeaderboard(levelIdx, null);
   try {
     const r = await fetchWithTimeout(
       `${SUPA_URL}/rest/v1/saves?select=username,progress`,
@@ -3937,7 +3646,6 @@ async function showLeaderboard(levelIdx) {
   }
 }
 
-// Show leaderboard for the whole chapter (total score across all levels)
 async function showChapterLeaderboard() {
   const ci = currentChIdx;
   const chStart = ci * LEVELS_PER;
@@ -3946,7 +3654,7 @@ async function showChapterLeaderboard() {
     null,
     `Chapter ${ci + 1}: ${CHAPTERS_DEF[ci].name}`,
     true,
-  ); // loading
+  );
   try {
     const r = await fetchWithTimeout(
       `${SUPA_URL}/rest/v1/saves?select=username,progress`,
@@ -3991,7 +3699,8 @@ function renderLeaderboard(levelIdx, entries, title, loading) {
   if (!el) {
     el = document.createElement("div");
     el.id = "leaderboardOverlay";
-    el.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:999;font-family:'Nunito',sans-serif;`;
+    el.style.cssText =
+      "position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:999;font-family:'Nunito',sans-serif;";
     document.body.appendChild(el);
   }
   const displayTitle =
@@ -4009,12 +3718,12 @@ function renderLeaderboard(levelIdx, entries, title, loading) {
             : (entries || [])
                 .map(
                   (e, i) => `
-            <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${e.name === currentUser ? "rgba(255,107,53,0.2)" : "rgba(255,255,255,0.04)"};border-radius:10px;margin-bottom:6px;${e.name === currentUser ? "border:1px solid rgba(255,107,53,0.5)" : "border:1px solid transparent"}">
-              <span style="font-size:18px;min-width:30px;">${i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `<span style='color:rgba(255,255,255,0.4);font-size:13px'>#${i + 1}</span>`}</span>
-              <span style="flex:1;text-align:left;color:${e.name === currentUser ? "#ff6b35" : "#fff"};font-weight:900;font-size:13px;">${e.name}${e.name === currentUser ? " 👈" : ""}</span>
-              ${e.levels !== undefined ? `<span style="color:rgba(255,255,255,0.4);font-size:11px;margin-right:4px">${e.levels}lvl</span>` : ""}
-              <span style="color:#ffd23f;font-weight:900;font-size:15px;">${e.score.toLocaleString()}</span>
-            </div>`,
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:${e.name === currentUser ? "rgba(255,107,53,0.2)" : "rgba(255,255,255,0.04)"};border-radius:10px;margin-bottom:6px;${e.name === currentUser ? "border:1px solid rgba(255,107,53,0.5)" : "border:1px solid transparent"}">
+          <span style="font-size:18px;min-width:30px;">${i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `<span style='color:rgba(255,255,255,0.4);font-size:13px'>#${i + 1}</span>`}</span>
+          <span style="flex:1;text-align:left;color:${e.name === currentUser ? "#ff6b35" : "#fff"};font-weight:900;font-size:13px;">${e.name}${e.name === currentUser ? " 👈" : ""}</span>
+          ${e.levels !== undefined ? `<span style="color:rgba(255,255,255,0.4);font-size:11px;margin-right:4px">${e.levels}lvl</span>` : ""}
+          <span style="color:#ffd23f;font-weight:900;font-size:15px;">${e.score.toLocaleString()}</span>
+        </div>`,
                 )
                 .join("")
       }
@@ -4024,9 +3733,6 @@ function renderLeaderboard(levelIdx, entries, title, loading) {
   el.style.display = "flex";
 }
 
-// Hook leaderboard into win overlay
-const _origTriggerWin = triggerWin;
-// Add leaderboard button to win overlay after it's shown
 function showLeaderboardBtn(idx) {
   const ob = document.querySelector(".overlay-win");
   if (!ob || ob.querySelector(".lb-btn")) return;
@@ -4036,5 +3742,3 @@ function showLeaderboardBtn(idx) {
   btn.onclick = () => showLeaderboard(idx);
   ob.appendChild(btn);
 }
-
-// Jump SFX is handled inline in the update function
