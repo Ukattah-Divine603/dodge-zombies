@@ -103,18 +103,35 @@ const DB = {
   _c: {},
 
   async load(u) {
-    // Always hit Supabase first for lives/progress accuracy across devices
+    // Always hit Supabase — source of truth for lives
     const row = await SUPA.getUser(u);
     if (row) {
+      const now = Date.now();
+      const MS = REGEN_MIN * 60000;
+      // Clean lla: must be valid numbers, in the past, not impossibly old
+      const rawLla = (row.last_life_lost_at || [])
+        .map(Number)
+        .filter(
+          (n) => !isNaN(n) && n > 0 && n <= now && now - n < MS * MAX_LIVES * 3,
+        );
+      // Recompute lives from lla directly — ignore stored lives value
+      // (stored lives can be wrong if the app crashed mid-sync)
+      const unregenerated = rawLla.filter((t) => now - t < MS);
+      const correctLives = Math.max(
+        0,
+        Math.min(MAX_LIVES, MAX_LIVES - unregenerated.length),
+      );
+
       const cloudData = {
         password: row.password,
         progress: row.progress || {},
-        lives: Math.min(row.lives ?? 5, MAX_LIVES),
-        lla: (row.last_life_lost_at || []).map(Number).filter(Boolean),
+        lives: correctLives,
+        lla: rawLla,
         coins: row.coins || 0,
         owned: row.owned || { chars: [], weapons: [] },
       };
-      // Merge with local cache: keep higher progress and coin count
+
+      // Merge progress/coins from local if better
       const cached = LOCAL.load(u);
       if (cached) {
         if (
@@ -125,11 +142,17 @@ const DB = {
         }
         cloudData.coins = Math.max(cloudData.coins, cached.coins || 0);
       }
+
+      // If lives were wrong in Supabase, fix them now
+      if (row.lives !== correctLives) {
+        SUPA.patch(u, { lives: correctLives, last_life_lost_at: rawLla });
+      }
+
       this._c[u] = cloudData;
       LOCAL.save(u, cloudData);
       return cloudData;
     }
-    // Fallback to local if offline
+    // Offline fallback
     const cached = LOCAL.load(u);
     if (cached) {
       this._c[u] = cached;
@@ -164,6 +187,8 @@ const DB = {
   _sync(u) {
     const d = this._c[u];
     if (!d) return;
+    // Recompute lives before every save so Supabase always has correct value
+    d.lives = this._computeLives(d);
     LOCAL.save(u, d);
     SUPA.patch(u, {
       progress: d.progress,
@@ -240,53 +265,62 @@ const DB = {
     this._sync(u);
   },
 
+  // ── LIVES SYSTEM ──────────────────────────────────────
+  // lla = array of timestamps when a life was LOST
+  // Every REGEN_MIN minutes, one timestamp expires = +1 life
+  // ─────────────────────────────────────────────────────
+
+  _computeLives(d) {
+    // Recompute lives from scratch based on lla timestamps
+    // This avoids any state drift between regen calls
+    if (!d) return MAX_LIVES;
+    const now = Date.now();
+    const MS = REGEN_MIN * 60000;
+    // Clean lla: numbers only, not in the future, not too old
+    d.lla = (d.lla || [])
+      .map(Number)
+      .filter((n) => !isNaN(n) && n > 0 && n <= now);
+    // Count how many losses have NOT yet regenerated
+    const unregenerated = d.lla.filter((t) => now - t < MS);
+    // lives = max - unregenerated losses
+    const computed = MAX_LIVES - unregenerated.length;
+    return Math.max(0, Math.min(MAX_LIVES, computed));
+  },
+
   getLives(u) {
     const d = this.user(u);
     if (!d) return 0;
-    this._regen(u);
-    return d.lives;
+    const lives = this._computeLives(d);
+    // Update d.lives if it drifted (but don't sync for just a read)
+    d.lives = lives;
+    return lives;
   },
 
   loseLife(u) {
     const d = this.user(u);
     if (!d) return;
-    this._regen(u);
-    if (d.lives > 0) {
-      d.lives--;
-      d.lla.push(Date.now()); // always record when life was lost
+    const currentLives = this.getLives(u);
+    if (currentLives > 0) {
+      d.lla.push(Date.now());
+      d.lives = this._computeLives(d);
       this._sync(u);
     }
-  },
-
-  _regen(u) {
-    const d = this.user(u);
-    if (!d) return;
-    const now = Date.now(),
-      MS = REGEN_MIN * 60000;
-    // Ensure lla are all numbers (Supabase can return strings)
-    d.lla = (d.lla || []).map(Number).filter((n) => !isNaN(n) && n > 0);
-    let changed = false;
-    // Process oldest entries first — each expired entry = +1 life
-    d.lla.sort((a, b) => a - b);
-    while (d.lla.length > 0 && now - d.lla[0] >= MS) {
-      d.lla.shift(); // remove the oldest expired entry
-      if (d.lives < MAX_LIVES) d.lives++;
-      changed = true;
-    }
-    // Clean up any entries too old to matter
-    d.lla = d.lla.filter((t) => now - t < MS * MAX_LIVES * 2);
-    if (changed) this._sync(u);
   },
 
   nextLifeIn(u) {
     const d = this.user(u);
     if (!d) return 0;
-    this._regen(u);
-    if (d.lives >= MAX_LIVES || !d.lla.length) return 0;
-    // Sort so oldest is first — that's the next one to expire
-    const sorted = [...d.lla].map(Number).sort((a, b) => a - b);
-    const ms = REGEN_MIN * 60000 - (Date.now() - sorted[0]);
-    return Math.max(0, ms);
+    const lives = this.getLives(u);
+    if (lives >= MAX_LIVES) return 0;
+    const now = Date.now();
+    const MS = REGEN_MIN * 60000;
+    // Find the oldest unregenerated loss — it expires soonest
+    const unregenerated = (d.lla || [])
+      .map(Number)
+      .filter((t) => !isNaN(t) && now - t < MS)
+      .sort((a, b) => a - b);
+    if (!unregenerated.length) return 0;
+    return Math.max(0, MS - (now - unregenerated[0]));
   },
 };
 
@@ -845,17 +879,7 @@ async function handleAuth() {
       msg.textContent = "ACCOUNT CREATED! ✓";
       setTimeout(() => loginAs(name), 600);
     } else {
-      const cached = LOCAL.load(name);
-      if (cached) {
-        if (cached.password !== pass) {
-          msg.textContent = "WRONG USERNAME OR PASSWORD";
-          return;
-        }
-        DB._c[name] = cached;
-        DB._refreshFromCloud(name);
-        loginAs(name);
-        return;
-      }
+      // Always load from Supabase — never trust cached lives data
       msg.style.color = "rgba(255,255,255,0.5)";
       msg.textContent = "LOADING SAVE...";
       const row = await DB.load(name);
@@ -948,7 +972,6 @@ function startLifeTimer() {
 }
 function tickLifeTimer() {
   if (!currentUser) return;
-  DB._regen(currentUser);
   const lives = DB.getLives(currentUser),
     msLeft = DB.nextLifeIn(currentUser);
   const str = "❤️".repeat(lives) + "🖤".repeat(Math.max(0, MAX_LIVES - lives));
