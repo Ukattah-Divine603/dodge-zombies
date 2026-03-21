@@ -1,10 +1,10 @@
 /* ══════════════════════════════════════════════════════════
-   Dodge Zombie Z — MOBILE LANDSCAPE ONLY
-   Only activates on touch devices in landscape orientation
-   Portrait = rotate prompt shown, game hidden
+   PIXELRUN Z — MOBILE CSS (Complete Rebuild)
+   Handles ALL mobile screens in landscape orientation
+   Portrait → shows rotate prompt, hides everything
 ══════════════════════════════════════════════════════════ */
 
-/* ── PORTRAIT: Block everything, show rotate prompt ────── */
+/* ── PORTRAIT: show rotate prompt, hide all screens ─── */
 @media (pointer: coarse) and (orientation: portrait) {
   #rotatePrompt {
     display: flex !important;
@@ -15,8 +15,11 @@
   }
 }
 
-/* ── LANDSCAPE MOBILE: All UI fixes ────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   LANDSCAPE MOBILE — ALL FIXES
+══════════════════════════════════════════════════════════ */
 @media (pointer: coarse) and (orientation: landscape) {
+  /* ── BASE RESET ─────────────────────────────────────── */
   html,
   body {
     width: 100%;
@@ -25,251 +28,415 @@
     touch-action: none;
   }
 
-  /* ── LOGIN ──────────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════
+     LOGIN SCREEN
+  ══════════════════════════════════════════════════════ */
   #loginScreen {
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 10px 16px !important;
-    gap: 20px !important;
+    padding: 10px 20px !important;
+    gap: 24px !important;
+    overflow: hidden !important;
+  }
+
+  .login-bg-grid {
+    display: none;
   }
 
   .login-center {
     flex-direction: row !important;
     align-items: center !important;
-    gap: 20px !important;
+    justify-content: center !important;
+    gap: 24px !important;
     width: 100% !important;
-    max-width: 720px !important;
+    max-width: 760px !important;
   }
 
   .game-logo {
-    flex-shrink: 0;
+    flex-shrink: 0 !important;
+    text-align: center !important;
   }
+
   .logo-pixel,
   .logo-run {
-    font-size: clamp(10px, 2.2vw, 18px) !important;
+    font-size: clamp(9px, 2vw, 16px) !important;
   }
   .logo-z {
-    font-size: clamp(20px, 5vw, 38px) !important;
+    font-size: clamp(18px, 5vw, 36px) !important;
+    line-height: 1 !important;
   }
   .logo-tag {
     font-size: 5px !important;
+    margin-top: 4px !important;
   }
 
   .login-box {
-    width: min(280px, 48vw) !important;
-    padding: 14px 12px !important;
-    gap: 6px !important;
+    width: min(300px, 46vw) !important;
+    padding: 14px 14px !important;
+    gap: 7px !important;
     flex-shrink: 0 !important;
   }
 
   .login-box-header {
     font-size: 8px !important;
+    margin-bottom: 2px !important;
   }
-  .field input {
-    padding: 7px 8px !important;
-    font-size: 7px !important;
+  .field {
+    gap: 3px !important;
   }
   .field label {
     font-size: 6px !important;
   }
+  .field input {
+    padding: 8px 8px !important;
+    font-size: 8px !important;
+  }
+  .pass-toggle {
+    font-size: 13px !important;
+  }
   .px-btn {
     font-size: 7px !important;
-    padding: 9px 12px !important;
+    padding: 10px 10px !important;
     width: 100% !important;
   }
-  .login-msg,
+  .login-msg {
+    font-size: 6px !important;
+    min-height: 8px !important;
+  }
   .login-note,
   .px-btn-forgot {
     font-size: 6px !important;
   }
 
-  /* ── CHARACTER SELECT ───────────────────────────────── */
+  /* ══════════════════════════════════════════════════════
+     CHARACTER SELECT — COMPLETE REBUILD FOR MOBILE
+     Layout (top to bottom):
+       [header]
+       [horizontal scrollable character row]
+       [preview strip + weapon list side by side]
+       [LET'S GO button]
+  ══════════════════════════════════════════════════════ */
   #charScreen {
-    padding: 6px 8px 6px !important;
-    gap: 4px !important;
-    overflow: hidden !important;
+    display: flex !important;
     flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 6px 0 0 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    height: 100vh !important;
   }
 
+  /* Header stays compact */
   .char-header {
     flex-shrink: 0 !important;
-    text-align: center;
-  }
-  .char-title {
-    font-size: clamp(16px, 3.5vw, 28px) !important;
-    letter-spacing: 2px !important;
-  }
-  .char-sub {
-    font-size: 9px !important;
-  }
-  .char-coins {
-    font-size: 9px !important;
-    padding: 2px 10px !important;
-    margin-top: 2px !important;
+    text-align: center !important;
+    padding: 0 12px !important;
+    z-index: 1 !important;
   }
 
+  .char-title {
+    font-size: clamp(18px, 4vw, 30px) !important;
+    letter-spacing: 2px !important;
+  }
+
+  .char-sub {
+    font-size: 10px !important;
+    margin-top: 1px !important;
+  }
+
+  .char-coins {
+    font-size: 10px !important;
+    padding: 3px 12px !important;
+    margin-top: 4px !important;
+    display: inline-block !important;
+  }
+
+  /* ── CHARACTER GRID: horizontal scroll row ──────────── */
   .char-select-layout {
+    display: flex !important;
+    flex-direction: column !important;
     flex: 1 !important;
-    flex-direction: row !important;
     min-height: 0 !important;
     overflow: hidden !important;
-    width: 100% !important;
   }
 
   .char-grid {
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 5px !important;
-    padding: 5px !important;
-    overflow-y: auto !important;
-    align-content: start !important;
-    flex: 1 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    flex-shrink: 0 !important;
+    align-items: stretch !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
   }
 
+  .char-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Each character card — fixed width, snap into place */
   .char-card {
-    padding: 6px 5px !important;
-    border-radius: 10px !important;
-    gap: 3px !important;
+    flex: 0 0 clamp(110px, 22vw, 150px) !important;
+    min-width: clamp(110px, 22vw, 150px) !important;
+    scroll-snap-align: start !important;
+    padding: 10px 8px !important;
+    border-radius: 12px !important;
+    gap: 5px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
   }
 
   .char-avatar {
-    width: 44px !important;
-    height: 44px !important;
+    width: 54px !important;
+    height: 54px !important;
   }
+
   .char-canvas {
-    width: 44px !important;
-    height: 44px !important;
+    width: 54px !important;
+    height: 54px !important;
   }
+
   .char-name {
-    font-size: 10px !important;
-  }
-  .char-class {
-    font-size: 7px !important;
-  }
-  .stat-pip {
-    font-size: 6px !important;
-    padding: 1px 3px !important;
-  }
-
-  .char-preview-panel {
-    width: 120px !important;
-    min-width: 110px !important;
-    padding: 6px 8px !important;
-    gap: 4px !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-top: none !important;
-    flex-direction: column !important;
-    overflow-y: auto !important;
-  }
-
-  #charPreviewCanvas {
-    width: 70px !important;
-    height: 94px !important;
-  }
-  .preview-title {
-    font-size: 7px !important;
-  }
-  .preview-name {
-    font-size: 13px !important;
-  }
-  .preview-stats {
-    font-size: 8px !important;
-    line-height: 1.4 !important;
-  }
-  .preview-weapon-label {
-    font-size: 7px !important;
-  }
-  .weapon-card-small {
-    padding: 4px 6px !important;
-    gap: 4px !important;
-  }
-  .weapon-card-small .wcs-icon {
-    font-size: 13px !important;
-  }
-  .weapon-card-small .wcs-name {
-    font-size: 8px !important;
-  }
-  .weapon-card-small .wcs-dmg {
-    font-size: 7px !important;
-  }
-
-  #charConfirmBtn {
-    width: calc(100% - 16px) !important;
-    max-width: 100% !important;
-    margin: 3px 8px 5px !important;
-    padding: 9px !important;
     font-size: 12px !important;
-    border-radius: 40px !important;
+    letter-spacing: 1px !important;
+  }
+
+  .char-class {
+    font-size: 9px !important;
+  }
+
+  .char-stats {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 3px !important;
+    justify-content: center !important;
+  }
+
+  .stat-pip {
+    font-size: 7px !important;
+    padding: 2px 4px !important;
+    white-space: nowrap !important;
+  }
+
+  .char-locked-btn {
+    font-size: 10px !important;
+    padding: 6px 10px !important;
+  }
+  .char-locked-label {
+    font-size: 8px !important;
+  }
+
+  /* ── BOTTOM PANEL: preview left, weapons right ──────── */
+  .char-preview-panel {
+    display: flex !important;
+    flex-direction: row !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-left: none !important;
+    width: 100% !important;
+    min-width: unset !important;
+    padding: 8px 12px !important;
+    gap: 12px !important;
+    overflow: hidden !important;
+    align-items: flex-start !important;
+  }
+
+  /* Left side of bottom panel: character preview */
+  #charPreviewCanvas {
+    flex-shrink: 0 !important;
+    width: 64px !important;
+    height: 86px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Middle: name + stats */
+  .preview-title {
+    display: none !important;
+  }
+
+  .preview-name {
+    font-size: 16px !important;
+    letter-spacing: 1px !important;
     flex-shrink: 0 !important;
   }
 
-  /* ── WORLD MAP ──────────────────────────────────────── */
-  .map-topbar {
-    padding: 7px 10px !important;
-    gap: 8px !important;
-  }
-  .map-username {
-    font-size: 15px !important;
-  }
-  .map-stats {
-    font-size: 9px !important;
-    gap: 8px !important;
-  }
-  .icon-btn {
-    padding: 5px 8px !important;
-    font-size: 14px !important;
+  .preview-stats {
+    font-size: 10px !important;
+    line-height: 1.5 !important;
+    flex-shrink: 0 !important;
   }
 
-  .worlds-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+  /* Weapon section fills the rest */
+  .preview-weapon-label {
+    font-size: 9px !important;
+    letter-spacing: 1px !important;
+    margin-top: 0 !important;
+    flex-shrink: 0 !important;
+    align-self: flex-start !important;
+  }
+
+  .weapon-grid-small {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    flex: 1 !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    align-items: center !important;
+    padding-bottom: 2px !important;
+  }
+
+  .weapon-grid-small::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .weapon-card-small {
+    flex: 0 0 auto !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 6px 8px !important;
+    border-radius: 8px !important;
+    gap: 3px !important;
+    min-width: 60px !important;
+  }
+
+  .weapon-card-small .wcs-icon {
+    font-size: 18px !important;
+  }
+  .weapon-card-small .wcs-name {
+    font-size: 9px !important;
+    text-align: center !important;
+  }
+  .weapon-card-small .wcs-dmg {
+    font-size: 8px !important;
+    text-align: center !important;
+  }
+
+  /* ── LET'S GO BUTTON ────────────────────────────────── */
+  #charConfirmBtn {
+    display: block !important;
+    visibility: visible !important;
+    flex-shrink: 0 !important;
+    width: calc(100% - 24px) !important;
+    max-width: 100% !important;
+    margin: 6px 12px 8px !important;
+    padding: 12px !important;
+    font-size: 14px !important;
+    border-radius: 50px !important;
+    z-index: 10 !important;
+    position: relative !important;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     WORLD MAP
+  ══════════════════════════════════════════════════════ */
+  #mapScreen {
+    overflow-y: auto !important;
+  }
+
+  .map-topbar {
+    padding: 7px 12px !important;
     gap: 8px !important;
+  }
+
+  .map-username {
+    font-size: 16px !important;
+  }
+  .map-stats {
+    font-size: 10px !important;
+    gap: 8px !important;
+  }
+  .lives-tag {
+    font-size: 12px !important;
+  }
+  .icon-btn {
+    padding: 5px 9px !important;
+    font-size: 15px !important;
+    border-radius: 8px !important;
+  }
+  .map-timer {
+    font-size: 10px !important;
+  }
+
+  .map-scroll {
     padding: 10px 12px !important;
   }
 
+  .worlds-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 10px !important;
+  }
+
   .world-card {
-    padding: 10px 8px !important;
-    border-radius: 12px !important;
+    padding: 12px 10px !important;
+    border-radius: 14px !important;
   }
   .wc-icon {
-    font-size: 18px !important;
-    margin-bottom: 3px !important;
+    font-size: 20px !important;
+    margin-bottom: 4px !important;
   }
   .wc-chapter {
-    font-size: 8px !important;
+    font-size: 9px !important;
   }
   .wc-name {
-    font-size: 14px !important;
+    font-size: 16px !important;
   }
   .wc-progress {
-    font-size: 8px !important;
+    font-size: 9px !important;
   }
 
-  /* ── LEVEL SELECT ───────────────────────────────────── */
-  .level-topbar {
-    padding: 6px 10px !important;
+  /* ══════════════════════════════════════════════════════
+     LEVEL SELECT
+  ══════════════════════════════════════════════════════ */
+  #levelScreen {
+    overflow-y: auto !important;
   }
+
+  .level-topbar {
+    padding: 7px 12px !important;
+    gap: 8px !important;
+  }
+
   .level-world-title {
-    font-size: clamp(12px, 2.5vw, 20px) !important;
+    font-size: clamp(13px, 2.8vw, 22px) !important;
+  }
+  .level-lives {
+    font-size: 12px !important;
   }
   .level-subtitle {
-    font-size: 9px !important;
-    padding: 4px 10px !important;
-  }
-  .level-grid {
-    grid-template-columns: repeat(10, 1fr) !important;
-    gap: 4px !important;
-  }
-  .level-btn {
-    font-size: 9px !important;
-    padding: 5px 2px !important;
-    border-radius: 6px !important;
+    font-size: 10px !important;
+    padding: 5px 12px !important;
   }
   .level-grid-wrap {
-    padding: 8px 10px !important;
+    padding: 10px 12px !important;
   }
 
-  /* ── GAME SCREEN ────────────────────────────────────── */
+  .level-grid {
+    grid-template-columns: repeat(10, 1fr) !important;
+    gap: 5px !important;
+    max-width: 100% !important;
+  }
+
+  .level-btn {
+    font-size: 10px !important;
+    padding: 6px 2px !important;
+    border-radius: 7px !important;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     GAME SCREEN
+  ══════════════════════════════════════════════════════ */
   #gameScreen {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -291,15 +458,15 @@
     z-index: 5 !important;
   }
 
-  #hud .hud-left span,
-  #hud .hud-right span {
+  .hud-left span,
+  .hud-right span {
     font-size: 9px !important;
   }
-  #hud .hud-lives {
+  .hud-lives {
     font-size: 11px !important;
     letter-spacing: 1px !important;
   }
-  #hud .hud-weapon {
+  .hud-weapon {
     font-size: 14px !important;
   }
 
@@ -310,20 +477,15 @@
   }
 
   /* ══════════════════════════════════════════════════════
-     MOBILE CONTROLS
-     Left:  D-pad (up, left, right arranged in cross)
-     Right: Big attack button
-     Inspired by reference image layout
+     MOBILE CONTROLS — D-PAD LEFT, ATTACK RIGHT
   ══════════════════════════════════════════════════════ */
-
-  /* Override base style.css mobile-controls */
   .mobile-controls {
     display: flex !important;
     position: absolute !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    height: clamp(100px, 24vh, 140px) !important;
+    height: clamp(100px, 24vh, 130px) !important;
     padding: clamp(8px, 2vh, 14px) clamp(12px, 3vw, 24px) !important;
     justify-content: space-between !important;
     align-items: flex-end !important;
@@ -336,35 +498,32 @@
     ) !important;
   }
 
-  /* ── D-PAD (LEFT SIDE) ──────────────────────────────── */
+  /* D-PAD grid layout */
   .mc-left {
     display: grid !important;
     grid-template-areas:
       ". up ."
-      "lft ctr rgt"
-      ".   .   ." !important;
-    grid-template-columns: repeat(3, clamp(44px, 9.5vw, 60px)) !important;
-    grid-template-rows: repeat(3, clamp(44px, 9.5vw, 60px)) !important;
-    gap: 2px !important;
+      "lft .  rgt" !important;
+    grid-template-columns: repeat(3, clamp(44px, 9.5vw, 58px)) !important;
+    grid-template-rows: repeat(2, clamp(44px, 9.5vw, 58px)) !important;
+    gap: 4px !important;
     pointer-events: all !important;
     align-items: center !important;
     justify-items: center !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 6px !important;
   }
 
-  /* Collapse the mc-lr div so it doesn't break grid */
   .mc-lr {
     display: contents !important;
   }
 
-  /* All d-pad buttons share this base */
   .mc-btn {
-    width: clamp(44px, 9.5vw, 60px) !important;
-    height: clamp(44px, 9.5vw, 60px) !important;
+    width: clamp(44px, 9.5vw, 58px) !important;
+    height: clamp(44px, 9.5vw, 58px) !important;
     font-size: clamp(17px, 3.8vw, 24px) !important;
-    background: rgba(30, 30, 60, 0.75) !important;
-    border: 2px solid rgba(255, 255, 255, 0.25) !important;
-    border-radius: 14px !important;
+    background: rgba(20, 20, 50, 0.8) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 12px !important;
     color: #fff !important;
     display: flex !important;
     align-items: center !important;
@@ -374,74 +533,60 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
     -webkit-tap-highlight-color: transparent !important;
     touch-action: manipulation !important;
-    transition:
-      transform 0.05s,
-      background 0.05s !important;
   }
 
   .mc-btn:active {
-    background: rgba(80, 80, 160, 0.85) !important;
+    background: rgba(80, 80, 180, 0.9) !important;
     transform: scale(0.88) !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6) !important;
   }
 
-  /* UP — placed in top-center of grid */
   .mc-up {
     grid-area: up !important;
-    border-radius: 14px 14px 6px 6px !important;
+    border-radius: 12px 12px 4px 4px !important;
   }
-
-  /* LEFT — placed in middle-left */
   .mc-left-btn {
     grid-area: lft !important;
-    border-radius: 14px 6px 6px 14px !important;
+    border-radius: 12px 4px 4px 12px !important;
   }
-
-  /* RIGHT — placed in middle-right */
   .mc-right-btn {
     grid-area: rgt !important;
-    border-radius: 6px 14px 14px 6px !important;
+    border-radius: 4px 12px 12px 4px !important;
   }
 
-  /* ── ACTION BUTTONS (RIGHT SIDE) ────────────────────── */
+  /* Attack button */
   .mc-right {
     display: flex !important;
-    flex-direction: column !important;
     align-items: center !important;
-    justify-content: flex-end !important;
-    gap: clamp(6px, 1.5vh, 12px) !important;
+    justify-content: center !important;
     pointer-events: all !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 6px !important;
   }
 
-  /* BIG ATTACK BUTTON — red circle like reference */
   .mc-atk {
-    width: clamp(64px, 14vw, 84px) !important;
-    height: clamp(64px, 14vw, 84px) !important;
-    font-size: clamp(26px, 6vw, 38px) !important;
+    width: clamp(62px, 13vw, 80px) !important;
+    height: clamp(62px, 13vw, 80px) !important;
+    font-size: clamp(26px, 5.5vw, 36px) !important;
     background: radial-gradient(circle at 38% 32%, #ff7a50, #cc1a00) !important;
-    border: 3px solid rgba(255, 160, 100, 0.55) !important;
+    border: 3px solid rgba(255, 160, 100, 0.5) !important;
     border-radius: 50% !important;
     box-shadow:
-      0 0 22px rgba(255, 80, 30, 0.55),
-      0 6px 18px rgba(0, 0, 0, 0.55),
-      inset 0 2px 0 rgba(255, 200, 150, 0.3) !important;
+      0 0 20px rgba(255, 80, 30, 0.5),
+      0 6px 16px rgba(0, 0, 0, 0.5) !important;
     color: #fff !important;
     -webkit-tap-highlight-color: transparent !important;
     touch-action: manipulation !important;
-    transition: transform 0.05s !important;
   }
 
   .mc-atk:active {
     transform: scale(0.88) !important;
-    box-shadow:
-      0 0 32px rgba(255, 80, 30, 0.8),
-      0 2px 8px rgba(0, 0, 0, 0.6) !important;
+    box-shadow: 0 0 30px rgba(255, 80, 30, 0.8) !important;
   }
 
-  /* ── OVERLAYS ───────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════
+     OVERLAYS
+  ══════════════════════════════════════════════════════ */
   .overlay-box {
-    padding: 18px 20px !important;
+    padding: 16px 18px !important;
     gap: 8px !important;
     min-width: min(240px, 75vw) !important;
     border-radius: 16px !important;
@@ -459,40 +604,85 @@
   .overlay-score {
     font-size: 14px !important;
   }
+  .wait-timer {
+    font-size: 22px !important;
+  }
 
   .modern-btn {
     font-size: 12px !important;
     padding: 9px 18px !important;
     width: 160px !important;
+    max-width: 90% !important;
   }
-}
+} /* end landscape */
 
-/* ── LET'S GO BUTTON — always visible on mobile ─────── */
+/* ══════════════════════════════════════════════════════
+   CHAR PREVIEW PANEL — internal layout fix
+   Makes canvas+info sit left, weapons sit right
+══════════════════════════════════════════════════════ */
 @media (pointer: coarse) and (orientation: landscape) {
-  #charScreen {
-    overflow-y: auto !important;
+  /* The panel itself is a horizontal flex row */
+  .char-preview-panel {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    overflow: hidden !important;
   }
-  #charConfirmBtn {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: relative !important;
-    z-index: 10 !important;
-    width: calc(100% - 16px) !important;
-    margin: 4px 8px 8px !important;
-    padding: 12px !important;
-    font-size: 14px !important;
-    flex-shrink: 0 !important;
-  }
-}
 
-@media (pointer: coarse) and (orientation: portrait) {
-  #charConfirmBtn {
-    display: block !important;
-    visibility: visible !important;
-    width: 90% !important;
-    margin: 8px auto !important;
-    padding: 14px !important;
-    font-size: 15px !important;
+  /* Canvas sits alone on the left */
+  #charPreviewCanvas {
+    flex: 0 0 64px !important;
+    align-self: center !important;
+  }
+
+  /* Name + stats stacked in a small column */
+  .preview-name {
+    flex: 0 0 auto !important;
+    align-self: center !important;
+  }
+
+  .preview-stats {
+    flex: 0 0 auto !important;
+    text-align: left !important;
+  }
+
+  /* Weapon label above horizontal weapon scroll */
+  .preview-weapon-label {
+    flex: 0 0 auto !important;
+    writing-mode: vertical-rl !important;
+    text-orientation: mixed !important;
+    transform: rotate(180deg) !important;
+    font-size: 8px !important;
+    align-self: center !important;
+    margin: 0 4px !important;
+    letter-spacing: 1px !important;
+  }
+
+  /* Weapon grid takes the remaining width, scrolls horizontally */
+  .weapon-grid-small {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+    padding: 4px 2px !important;
+    align-items: center !important;
+    scrollbar-width: none !important;
+  }
+
+  .weapon-card-small {
+    flex: 0 0 auto !important;
+    flex-direction: column !important;
+    min-width: 58px !important;
+    text-align: center !important;
+    padding: 6px 6px !important;
+  }
+
+  .weapon-card-small .wcs-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
   }
 }
