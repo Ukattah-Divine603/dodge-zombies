@@ -1,21 +1,32 @@
 /* ══════════════════════════════════════════════════════════
-   PIXELRUN Z / DODGE ZOMBIE — MOBILE CSS FINAL
-   Portrait  → rotate prompt, hide all screens
-   Landscape → full game UI
+   PIXELRUN Z — MOBILE CSS FINAL v4
+   Portrait  → rotate prompt, block everything
+   Landscape → full game, all screens fixed
 ══════════════════════════════════════════════════════════ */
 
-/* ── PORTRAIT ────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   PORTRAIT — HARD BLOCK
+══════════════════════════════════════════════════════════ */
 @media (pointer: coarse) and (orientation: portrait) {
   #rotatePrompt {
     display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+    background: #06060f !important;
   }
   .screen,
-  .screen.active {
+  .screen.active,
+  #instructionsOverlay {
     display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
 
-/* ── LANDSCAPE ───────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   LANDSCAPE — ALL FIXES
+══════════════════════════════════════════════════════════ */
 @media (pointer: coarse) and (orientation: landscape) {
   html,
   body {
@@ -23,6 +34,23 @@
     height: 100%;
     overflow: hidden;
     touch-action: none;
+  }
+
+  /* Screen isolation — no bleed */
+  .screen {
+    isolation: isolate !important;
+  }
+  .screen:not(.active) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .screen.active {
+    visibility: visible !important;
+    pointer-events: all !important;
+  }
+  .modern-bg {
+    position: absolute !important;
   }
 
   /* ── LOGIN ─────────────────────────────────────────── */
@@ -33,6 +61,7 @@
     padding: 8px 16px !important;
     gap: 20px !important;
     overflow: hidden !important;
+    height: 100vh !important;
   }
   .login-bg-grid {
     display: none !important;
@@ -44,6 +73,8 @@
     gap: 20px !important;
     width: 100% !important;
     max-width: 700px !important;
+    position: relative;
+    z-index: 2;
   }
   .game-logo {
     flex-shrink: 0 !important;
@@ -51,20 +82,22 @@
   }
   .logo-pixel,
   .logo-run {
-    font-size: clamp(9px, 2vw, 16px) !important;
+    font-size: clamp(9px, 2vw, 15px) !important;
   }
   .logo-z {
-    font-size: clamp(18px, 5vw, 36px) !important;
+    font-size: clamp(20px, 5vw, 38px) !important;
     line-height: 1 !important;
   }
   .logo-tag {
     font-size: 5px !important;
   }
   .login-box {
-    width: min(290px, 46vw) !important;
+    width: min(280px, 44vw) !important;
     padding: 12px !important;
     gap: 6px !important;
     flex-shrink: 0 !important;
+    position: relative;
+    z-index: 2;
   }
   .login-box-header {
     font-size: 8px !important;
@@ -100,11 +133,10 @@
     height: 100vh !important;
     overflow: hidden !important;
   }
-
   .char-header {
     flex-shrink: 0 !important;
     text-align: center !important;
-    padding: 8px 12px 4px !important;
+    padding: 6px 12px 4px !important;
     position: relative;
     z-index: 1;
   }
@@ -114,23 +146,21 @@
   }
   .char-sub {
     font-size: 9px !important;
-    margin-top: 2px !important;
+    margin-top: 1px !important;
   }
   .char-coins {
     font-size: 9px !important;
-    padding: 3px 10px !important;
+    padding: 2px 10px !important;
     margin-top: 3px !important;
   }
 
-  /* Char grid wrap — scrollable area */
   .char-grid-wrap {
     flex: 1 !important;
     overflow: hidden !important;
-    position: relative !important;
-    z-index: 1 !important;
+    position: relative;
+    z-index: 1;
   }
 
-  /* Single horizontal scrollable row of cards */
   .char-grid {
     display: flex !important;
     flex-direction: row !important;
@@ -138,24 +168,21 @@
     overflow-x: auto !important;
     overflow-y: hidden !important;
     gap: 8px !important;
-    padding: 8px 14px 12px !important;
+    padding: 8px 14px 10px !important;
     height: 100% !important;
     align-items: center !important;
     scroll-snap-type: x mandatory !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
-    max-width: 100% !important;
-    margin: 0 !important;
     box-sizing: border-box !important;
   }
   .char-grid::-webkit-scrollbar {
     display: none !important;
   }
 
-  /* Individual character cards */
   .char-card {
-    flex: 0 0 clamp(110px, 22vw, 148px) !important;
-    min-width: clamp(110px, 22vw, 148px) !important;
+    flex: 0 0 clamp(110px, 22vw, 145px) !important;
+    min-width: clamp(110px, 22vw, 145px) !important;
     scroll-snap-align: center !important;
     padding: 10px 8px !important;
     border-radius: 12px !important;
@@ -165,48 +192,34 @@
     align-items: center !important;
   }
   .char-avatar {
-    width: 56px !important;
-    height: 56px !important;
+    width: 54px !important;
+    height: 54px !important;
   }
   .char-canvas {
-    width: 56px !important;
-    height: 56px !important;
+    width: 54px !important;
+    height: 54px !important;
   }
   .char-name {
     font-size: 12px !important;
-    letter-spacing: 1px !important;
   }
   .char-class {
     font-size: 8px !important;
-  }
-  .char-stats {
-    gap: 3px !important;
   }
   .stat-pip {
     font-size: 7px !important;
     padding: 1px 4px !important;
   }
   .char-locked-btn {
-    font-size: 10px !important;
-    padding: 5px 10px !important;
+    font-size: 9px !important;
+    padding: 5px 8px !important;
   }
   .char-locked-label {
     font-size: 7px !important;
   }
 
-  /* NEXT button */
+  /* Hide NEXT button — tap-to-navigate */
   #charNextBtn {
-    display: block !important;
-    visibility: visible !important;
-    flex-shrink: 0 !important;
-    width: calc(100% - 28px) !important;
-    max-width: 100% !important;
-    margin: 4px 14px 10px !important;
-    padding: 12px !important;
-    font-size: 14px !important;
-    border-radius: 50px !important;
-    z-index: 10 !important;
-    position: relative !important;
+    display: none !important;
   }
 
   /* ── STEP 2: WEAPON SCREEN ──────────────────────────── */
@@ -219,65 +232,60 @@
     height: 100vh !important;
     overflow-y: auto !important;
   }
-
   .weapon-topbar {
-    padding: 7px 12px !important;
+    padding: 6px 10px !important;
     gap: 8px !important;
     flex-shrink: 0 !important;
   }
   .weapon-topbar-title {
-    font-size: 16px !important;
+    font-size: 15px !important;
     letter-spacing: 1px !important;
   }
   .ws-coins {
     font-size: 9px !important;
-    padding: 3px 10px !important;
+    padding: 2px 8px !important;
   }
 
-  /* Char info strip */
   .ws-char-info {
-    padding: 8px 12px !important;
+    padding: 6px 10px !important;
     gap: 10px !important;
     flex-shrink: 0 !important;
     flex-direction: row !important;
     align-items: center !important;
   }
   #wsCharCanvas {
-    width: 52px !important;
-    height: 70px !important;
+    width: 48px !important;
+    height: 64px !important;
     flex-shrink: 0 !important;
   }
   .ws-char-name {
-    font-size: 20px !important;
-    letter-spacing: 1px !important;
+    font-size: 18px !important;
   }
   .ws-char-stats {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 4px !important;
+    gap: 3px !important;
   }
   .ws-char-stats .stat-pip {
-    font-size: 8px !important;
+    font-size: 7px !important;
   }
 
-  /* Weapon label */
   .ws-weapon-label {
-    font-size: 12px !important;
-    padding: 6px 12px 4px !important;
+    font-size: 11px !important;
+    padding: 5px 10px 3px !important;
     flex-shrink: 0 !important;
   }
 
-  /* Weapon grid — horizontal scroll */
   .weapon-grid-big {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    gap: 8px !important;
-    padding: 4px 12px 8px !important;
+    gap: 7px !important;
+    padding: 3px 10px 6px !important;
     flex: 1 !important;
-    align-items: flex-start !important;
+    align-items: center !important;
     scroll-snap-type: x mandatory !important;
     -webkit-overflow-scrolling: touch !important;
     scrollbar-width: none !important;
@@ -287,10 +295,10 @@
   }
 
   .weapon-card-big {
-    flex: 0 0 clamp(85px, 17vw, 110px) !important;
-    min-width: clamp(85px, 17vw, 110px) !important;
+    flex: 0 0 clamp(82px, 16vw, 105px) !important;
+    min-width: clamp(82px, 16vw, 105px) !important;
     scroll-snap-align: center !important;
-    padding: 10px 7px !important;
+    padding: 9px 6px !important;
     border-radius: 10px !important;
     gap: 4px !important;
   }
@@ -298,7 +306,7 @@
     font-size: 22px !important;
   }
   .wcb-name {
-    font-size: 11px !important;
+    font-size: 10px !important;
   }
   .wcb-stats {
     font-size: 8px !important;
@@ -307,109 +315,119 @@
     font-size: 8px !important;
   }
 
-  /* LET'S GO button */
+  /* Hide LET'S GO button — tap-to-navigate */
   #letsGoBtn {
-    display: block !important;
-    visibility: visible !important;
-    flex-shrink: 0 !important;
-    width: calc(100% - 28px) !important;
-    max-width: 100% !important;
-    margin: 4px 14px 10px !important;
-    padding: 12px !important;
-    font-size: 14px !important;
-    border-radius: 50px !important;
-    z-index: 10 !important;
-    position: relative !important;
+    display: none !important;
   }
 
   /* ── WORLD MAP ──────────────────────────────────────── */
   #mapScreen {
     overflow-y: auto !important;
+    height: 100vh !important;
   }
   .map-topbar {
-    padding: 7px 12px !important;
-    gap: 8px !important;
+    padding: 6px 10px !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
   }
   .map-username {
-    font-size: 16px !important;
+    font-size: 14px !important;
   }
   .map-stats {
-    font-size: 10px !important;
-    gap: 8px !important;
+    font-size: 9px !important;
+    gap: 6px !important;
   }
   .lives-tag {
-    font-size: 11px !important;
+    font-size: 10px !important;
   }
   .icon-btn {
-    padding: 5px 9px !important;
-    font-size: 14px !important;
+    padding: 4px 8px !important;
+    font-size: 13px !important;
     border-radius: 8px !important;
   }
   .map-timer {
-    font-size: 10px !important;
+    font-size: 9px !important;
   }
   .map-scroll {
-    padding: 10px 12px !important;
+    padding: 8px 10px !important;
+    overflow-y: auto !important;
   }
   .worlds-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
-    gap: 10px !important;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+    gap: 8px !important;
   }
   .world-card {
-    padding: 12px 10px !important;
-    border-radius: 12px !important;
+    padding: 10px 8px !important;
+    border-radius: 10px !important;
   }
   .wc-icon {
-    font-size: 20px !important;
-    margin-bottom: 4px !important;
+    font-size: 18px !important;
+    margin-bottom: 3px !important;
   }
   .wc-chapter {
-    font-size: 9px !important;
+    font-size: 8px !important;
   }
   .wc-name {
-    font-size: 15px !important;
+    font-size: 14px !important;
   }
   .wc-progress {
-    font-size: 9px !important;
+    font-size: 8px !important;
   }
 
   /* ── LEVEL SELECT ───────────────────────────────────── */
   #levelScreen {
-    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    overflow: hidden !important;
   }
   .level-topbar {
-    padding: 7px 12px !important;
-    gap: 8px !important;
+    padding: 6px 10px !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
   }
   .level-world-title {
-    font-size: clamp(13px, 2.8vw, 20px) !important;
+    font-size: clamp(11px, 2.4vw, 18px) !important;
   }
   .level-lives {
-    font-size: 11px !important;
+    font-size: 10px !important;
   }
   .level-subtitle {
-    font-size: 9px !important;
-    padding: 4px 12px !important;
+    font-size: 8px !important;
+    padding: 3px 10px !important;
+    flex-shrink: 0 !important;
   }
   .level-grid-wrap {
-    padding: 8px 12px !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 6px 10px 10px !important;
+    -webkit-overflow-scrolling: touch !important;
   }
   .level-grid {
+    display: grid !important;
     grid-template-columns: repeat(10, 1fr) !important;
     gap: 4px !important;
+    width: 100% !important;
     max-width: 100% !important;
   }
   .level-btn {
-    font-size: 9px !important;
-    padding: 5px 2px !important;
+    font-size: 8px !important;
+    padding: 4px 1px !important;
     border-radius: 6px !important;
+    aspect-ratio: 1 !important;
   }
 
-  /* ── GAME SCREEN ────────────────────────────────────── */
+  /* ── GAME SCREEN — TRUE FULLSCREEN ─────────────────── */
   #gameScreen {
+    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    position: relative !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
   }
   #gameWrapper {
     width: 100vw !important;
@@ -417,46 +435,49 @@
     display: flex !important;
     flex-direction: column !important;
     position: relative !important;
+    flex: 1 !important;
   }
   #hud {
     width: 100% !important;
     flex-shrink: 0 !important;
-    padding: 3px 10px !important;
+    padding: 2px 8px !important;
     z-index: 5 !important;
+    min-height: 28px !important;
   }
   .hud-left span,
   .hud-right span {
-    font-size: 9px !important;
+    font-size: 8px !important;
   }
   .hud-lives {
-    font-size: 11px !important;
+    font-size: 10px !important;
     letter-spacing: 1px !important;
   }
   .hud-weapon {
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
   #c {
     width: 100vw !important;
     flex: 1 !important;
     display: block !important;
+    height: 0 !important; /* flex takes over */
   }
 
-  /* ── D-PAD CONTROLS ─────────────────────────────────── */
+  /* ── MOBILE CONTROLS ────────────────────────────────── */
   .mobile-controls {
     display: flex !important;
     position: absolute !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    height: clamp(96px, 23vh, 126px) !important;
-    padding: clamp(7px, 1.8vh, 12px) clamp(10px, 2.5vw, 20px) !important;
+    height: clamp(96px, 22vh, 120px) !important;
+    padding: clamp(6px, 1.5vh, 10px) clamp(10px, 2.5vw, 18px) !important;
     justify-content: space-between !important;
     align-items: flex-end !important;
     pointer-events: none !important;
     z-index: 15 !important;
     background: linear-gradient(
       to top,
-      rgba(0, 0, 0, 0.28),
+      rgba(0, 0, 0, 0.25),
       transparent
     ) !important;
   }
@@ -464,9 +485,9 @@
   .mc-left {
     display: grid !important;
     grid-template-areas: ". up ." "lft . rgt" !important;
-    grid-template-columns: repeat(3, clamp(50px, 11vw, 66px)) !important;
-    grid-template-rows: repeat(2, clamp(50px, 11vw, 66px)) !important;
-    gap: 6px !important;
+    grid-template-columns: repeat(3, clamp(48px, 10.5vw, 64px)) !important;
+    grid-template-rows: repeat(2, clamp(48px, 10.5vw, 64px)) !important;
+    gap: 5px !important;
     pointer-events: all !important;
     align-items: center !important;
     justify-items: center !important;
@@ -478,10 +499,9 @@
   }
 
   .mc-btn {
-    width: clamp(50px, 11vw, 66px) !important;
-    height: clamp(50px, 11vw, 66px) !important;
+    width: clamp(48px, 10.5vw, 64px) !important;
+    height: clamp(48px, 10.5vw, 64px) !important;
     font-size: clamp(18px, 4vw, 26px) !important;
-    /* Glass effect */
     background: rgba(255, 255, 255, 0.12) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
@@ -498,20 +518,12 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
     -webkit-tap-highlight-color: transparent !important;
     touch-action: manipulation !important;
-    transition:
-      transform 0.08s,
-      box-shadow 0.08s !important;
   }
-
   .mc-btn:active {
     background: rgba(255, 255, 255, 0.22) !important;
     transform: scale(0.86) !important;
-    box-shadow:
-      0 4px 10px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
   }
 
-  /* All d-pad buttons are now circles — same border-radius */
   .mc-up {
     grid-area: up !important;
     border-radius: 50% !important;
@@ -534,10 +546,9 @@
   }
 
   .mc-atk {
-    width: clamp(66px, 14vw, 86px) !important;
-    height: clamp(66px, 14vw, 86px) !important;
-    font-size: clamp(28px, 6vw, 38px) !important;
-    /* Red glass */
+    width: clamp(64px, 13.5vw, 82px) !important;
+    height: clamp(64px, 13.5vw, 82px) !important;
+    font-size: clamp(26px, 5.8vw, 36px) !important;
     background: rgba(220, 60, 20, 0.55) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
@@ -546,89 +557,41 @@
     box-shadow:
       0 0 22px rgba(255, 80, 30, 0.55),
       0 8px 20px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 200, 150, 0.5),
-      inset 0 -3px 6px rgba(100, 0, 0, 0.3) !important;
+      inset 0 1px 0 rgba(255, 200, 150, 0.5) !important;
     color: #fff !important;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5) !important;
     -webkit-tap-highlight-color: transparent !important;
     touch-action: manipulation !important;
-    transition: transform 0.08s !important;
   }
-
   .mc-atk:active {
     transform: scale(0.86) !important;
-    box-shadow:
-      0 0 32px rgba(255, 80, 30, 0.8),
-      0 4px 10px rgba(0, 0, 0, 0.5) !important;
   }
 
   /* ── OVERLAYS ───────────────────────────────────────── */
   .overlay-box {
-    padding: 16px 18px !important;
+    padding: 14px 16px !important;
     gap: 8px !important;
-    min-width: min(230px, 72vw) !important;
-    border-radius: 16px !important;
+    min-width: min(220px, 70vw) !important;
+    border-radius: 14px !important;
   }
   .overlay-icon {
-    font-size: 26px !important;
+    font-size: 24px !important;
   }
   .overlay-title {
-    font-size: 20px !important;
+    font-size: 18px !important;
   }
   .overlay-msg {
-    font-size: 10px !important;
+    font-size: 9px !important;
   }
   .overlay-score {
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
   .wait-timer {
     font-size: 20px !important;
   }
   .modern-btn {
-    font-size: 12px !important;
-    padding: 9px 16px !important;
-    width: 155px !important;
+    font-size: 11px !important;
+    padding: 8px 14px !important;
+    width: 150px !important;
     max-width: 90% !important;
   }
 } /* end landscape */
-
-/* ── FIX: Prevent screen bleed-through on mobile ─────
-   charScreen was showing behind weaponScreen because
-   .modern-bg is position:fixed and leaks across screens.
-   On mobile we isolate each screen so nothing bleeds.
-─────────────────────────────────────────────────────── */
-@media (pointer: coarse) and (orientation: landscape) {
-  /* Each screen is fully isolated — no bleed through */
-  .screen {
-    isolation: isolate !important;
-  }
-
-  /* Non-active screens are completely invisible */
-  .screen:not(.active) {
-    display: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    z-index: -1 !important;
-  }
-
-  /* Active screen sits on top */
-  .screen.active {
-    z-index: 10 !important;
-    visibility: visible !important;
-    pointer-events: all !important;
-  }
-
-  /* Contain modern-bg inside its own screen on mobile */
-  .modern-bg {
-    position: absolute !important;
-    z-index: 0 !important;
-  }
-}
-
-/* ── Hide NEXT / LET'S GO on mobile too ─────────────── */
-@media (pointer: coarse) and (orientation: landscape) {
-  #charNextBtn,
-  #letsGoBtn {
-    display: none !important;
-  }
-}

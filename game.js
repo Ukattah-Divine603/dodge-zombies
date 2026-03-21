@@ -936,10 +936,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") handleAuth();
   });
   function checkOrientation() {
+    // CSS handles portrait blocking via media queries
+    // JS only manages the rotate prompt visibility
     const isMobile = window.matchMedia("(pointer: coarse)").matches;
     const isPortrait = window.innerHeight > window.innerWidth;
     const prompt = document.getElementById("rotatePrompt");
-    if (prompt) prompt.style.display = isMobile && isPortrait ? "flex" : "none";
+    if (prompt) {
+      prompt.style.display = isMobile && isPortrait ? "flex" : "none";
+    }
   }
   window.addEventListener("resize", checkOrientation);
   window.addEventListener("orientationchange", checkOrientation);
@@ -1036,6 +1040,8 @@ function showCharSelect() {
     done = Object.keys(prog).length;
   const coinBal = document.getElementById("charCoinBalance");
   if (coinBal) coinBal.textContent = `🪙 ${DB.getCoins(currentUser)} coins`;
+  const charSub = document.querySelector(".char-sub");
+  if (charSub) charSub.textContent = "Tap a character to begin";
 
   const cg = document.getElementById("charGrid");
   cg.innerHTML = "";
