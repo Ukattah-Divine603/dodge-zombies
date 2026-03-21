@@ -567,3 +567,36 @@
     max-width: 90% !important;
   }
 } /* end landscape */
+
+/* ── FIX: Prevent screen bleed-through on mobile ─────
+   charScreen was showing behind weaponScreen because
+   .modern-bg is position:fixed and leaks across screens.
+   On mobile we isolate each screen so nothing bleeds.
+─────────────────────────────────────────────────────── */
+@media (pointer: coarse) and (orientation: landscape) {
+  /* Each screen is fully isolated — no bleed through */
+  .screen {
+    isolation: isolate !important;
+  }
+
+  /* Non-active screens are completely invisible */
+  .screen:not(.active) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+  }
+
+  /* Active screen sits on top */
+  .screen.active {
+    z-index: 10 !important;
+    visibility: visible !important;
+    pointer-events: all !important;
+  }
+
+  /* Contain modern-bg inside its own screen on mobile */
+  .modern-bg {
+    position: absolute !important;
+    z-index: 0 !important;
+  }
+}
