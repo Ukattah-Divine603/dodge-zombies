@@ -1145,8 +1145,21 @@ function selectWeaponAndUpdate(id) {
   // Refresh selected state on weapon cards
   document.querySelectorAll(".weapon-card-big").forEach((c, i) => {
     c.classList.toggle("selected", WEAPONS[i]?.id === id);
+    if (WEAPONS[i]?.id === id) {
+      c.style.transition = "transform 0.15s, box-shadow 0.15s";
+      c.style.transform = "scale(1.1)";
+      c.style.boxShadow =
+        "0 0 30px " +
+        (selectedWeapon.color || "#ffd23f") +
+        ", 0 0 60px " +
+        (selectedWeapon.color || "#ffd23f") +
+        "66";
+    } else {
+      c.style.opacity = "0.4";
+      c.style.transform = "scale(0.95)";
+    }
   });
-  updateLetsGoBtn();
+  setTimeout(showMap, 1500);
 }
 
 function updateLetsGoBtn() {
@@ -1423,6 +1436,24 @@ function selectChar(id) {
     c.classList.toggle("selected", CHARACTERS[i]?.id === id);
   });
   updateCharPreview();
+  // Flash selected card then navigate after 1.5s
+  const cards = document.querySelectorAll(".char-card");
+  cards.forEach((c, i) => {
+    if (CHARACTERS[i]?.id === id) {
+      c.style.transition = "transform 0.15s, box-shadow 0.15s";
+      c.style.transform = "scale(1.08)";
+      c.style.boxShadow =
+        "0 0 30px " +
+        (selectedChar.color || "#ff6b35") +
+        ", 0 0 60px " +
+        (selectedChar.color || "#ff6b35") +
+        "66";
+    } else {
+      c.style.opacity = "0.4";
+      c.style.transform = "scale(0.95)";
+    }
+  });
+  setTimeout(goToWeaponSelect, 1500);
 }
 
 function selectWeapon(id) {

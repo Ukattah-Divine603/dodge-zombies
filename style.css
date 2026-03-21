@@ -1793,3 +1793,9 @@ body {
   margin: 8px auto 16px !important;
   display: block !important;
 }
+
+/* ── Hide NEXT and LET'S GO buttons (auto-nav now) ─── */
+#charNextBtn,
+#letsGoBtn {
+  display: none !important;
+}
