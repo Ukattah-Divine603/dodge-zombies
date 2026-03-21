@@ -1,4 +1,3 @@
-index.html
 <!doctype html>
 <html lang="en">
   <head>
@@ -20,7 +19,7 @@ index.html
     <link rel="stylesheet" href="mobile.css" />
   </head>
   <body>
-    <!-- INSTRUCTIONS (first time only) -->
+    <!-- INSTRUCTIONS -->
     <div
       id="instructionsOverlay"
       style="
@@ -173,7 +172,7 @@ index.html
       </div>
     </div>
 
-    <!-- ROTATE PROMPT (shown on portrait mobile) -->
+    <!-- ROTATE PROMPT -->
     <div id="rotatePrompt">
       <div class="rotate-inner">
         <div class="rotate-icon">📱➡️🔄</div>
@@ -182,7 +181,9 @@ index.html
       </div>
     </div>
 
-    <!-- LOGIN (pixel) -->
+    <!-- ══════════════════════
+         LOGIN
+    ══════════════════════ -->
     <div id="loginScreen" class="screen active">
       <div class="login-bg-grid"></div>
       <div class="login-scanlines"></div>
@@ -251,38 +252,74 @@ index.html
       </div>
     </div>
 
-    <!-- CHARACTER SELECT -->
+    <!-- ══════════════════════
+         STEP 1: CHOOSE CHARACTER
+         Characters only — horizontal scroll
+         NEXT button at bottom
+    ══════════════════════ -->
     <div id="charScreen" class="screen modern-screen">
       <div class="modern-bg"></div>
+
       <div class="char-header">
         <div class="char-title">CHOOSE YOUR HERO</div>
-        <div class="char-sub">Select a character and weapon to begin</div>
+        <div class="char-sub">Tap a character to select, then hit NEXT</div>
         <div class="char-coins" id="charCoinBalance">🪙 0 coins</div>
       </div>
-      <div class="char-select-layout">
-        <!-- Character cards -->
+
+      <!-- Characters only — no preview panel here -->
+      <div class="char-grid-wrap">
         <div class="char-grid" id="charGrid"></div>
-        <!-- Live preview panel -->
-        <div class="char-preview-panel">
-          <div class="preview-title">PREVIEW</div>
-          <canvas id="charPreviewCanvas" width="120" height="160"></canvas>
-          <div class="preview-name" id="previewName">JAKE</div>
-          <div class="preview-stats" id="previewStats"></div>
-          <!-- Weapon select inline -->
-          <div class="preview-weapon-label">WEAPON</div>
-          <div class="weapon-grid-small" id="weaponGrid"></div>
-        </div>
       </div>
+
       <button
         class="modern-btn modern-btn-primary full-btn"
-        id="charConfirmBtn"
-        onclick="confirmCharWeapon()"
+        id="charNextBtn"
+        onclick="goToWeaponSelect()"
       >
-        LET'S GO →
+        NEXT → CHOOSE WEAPON
       </button>
     </div>
 
-    <!-- WORLD MAP -->
+    <!-- ══════════════════════
+         STEP 2: CHOOSE WEAPON
+         Shows selected char info + weapon grid
+         BACK button + LET'S GO button
+    ══════════════════════ -->
+    <div id="weaponScreen" class="screen modern-screen">
+      <div class="modern-bg"></div>
+
+      <!-- Top bar -->
+      <div class="weapon-topbar">
+        <button class="icon-btn" onclick="showCharSelect()">← BACK</button>
+        <div class="weapon-topbar-title">CHOOSE WEAPON</div>
+        <div class="ws-coins" id="wsCoinsBalance">🪙 0 coins</div>
+      </div>
+
+      <!-- Selected character info -->
+      <div class="ws-char-info">
+        <canvas id="wsCharCanvas" width="120" height="160"></canvas>
+        <div class="ws-char-details">
+          <div class="ws-char-name" id="wsCharName">JAKE</div>
+          <div class="ws-char-stats" id="wsCharStats"></div>
+        </div>
+      </div>
+
+      <!-- Weapon grid -->
+      <div class="ws-weapon-label">SELECT YOUR WEAPON</div>
+      <div class="weapon-grid-big" id="weaponGrid"></div>
+
+      <button
+        class="modern-btn modern-btn-primary full-btn"
+        id="letsGoBtn"
+        onclick="letsGo()"
+      >
+        LET'S GO 🔥
+      </button>
+    </div>
+
+    <!-- ══════════════════════
+         WORLD MAP
+    ══════════════════════ -->
     <div id="mapScreen" class="screen modern-screen">
       <div class="modern-bg"></div>
       <div class="map-topbar">
@@ -298,7 +335,7 @@ index.html
           <div class="map-stats">
             <span>⭐ <span id="totalStars">0</span>/500</span>
             <span style="color: #ffd23f">🪙 <span id="mapCoins">0</span></span>
-            <span class="lives-tag" id="livesDisplay">❤️❤️❤️</span>
+            <span class="lives-tag" id="livesDisplay">❤️❤️❤️❤️❤️</span>
           </div>
         </div>
         <div
@@ -320,13 +357,15 @@ index.html
       </div>
     </div>
 
-    <!-- LEVEL SELECT -->
+    <!-- ══════════════════════
+         LEVEL SELECT
+    ══════════════════════ -->
     <div id="levelScreen" class="screen modern-screen">
       <div class="modern-bg"></div>
       <div class="level-topbar">
         <button class="icon-btn" onclick="showMap()">←</button>
         <div class="level-world-title" id="worldTitle"></div>
-        <div class="level-lives" id="levelLivesDisplay">❤️❤️❤️</div>
+        <div class="level-lives" id="levelLivesDisplay">❤️❤️❤️❤️❤️</div>
         <button
           class="icon-btn"
           onclick="showChapterLeaderboard()"
@@ -341,7 +380,9 @@ index.html
       </div>
     </div>
 
-    <!-- GAME SCREEN -->
+    <!-- ══════════════════════
+         GAME SCREEN
+    ══════════════════════ -->
     <div id="gameScreen" class="screen">
       <div id="gameWrapper">
         <div id="hud">
@@ -351,7 +392,7 @@ index.html
             <span class="hud-level" id="hudLevel">LV.1</span>
           </div>
           <div class="hud-center">
-            <span class="hud-lives" id="hudLives">❤️❤️❤️</span>
+            <span class="hud-lives" id="hudLives">❤️❤️❤️❤️❤️</span>
           </div>
           <div class="hud-right">
             <span class="hud-score">⭐<span id="hudScore">0</span></span>
@@ -362,7 +403,7 @@ index.html
         <canvas id="c"></canvas>
       </div>
 
-      <!-- Mobile controls: LEFT = movement, RIGHT = weapon + jump -->
+      <!-- Mobile controls -->
       <div class="mobile-controls" id="mobileControls">
         <div class="mc-left">
           <button class="mc-btn mc-up" ontouchstart="mcJump()" ontouchend="">

@@ -1036,6 +1036,7 @@ function showCharSelect() {
     done = Object.keys(prog).length;
   const coinBal = document.getElementById("charCoinBalance");
   if (coinBal) coinBal.textContent = `🪙 ${DB.getCoins(currentUser)} coins`;
+
   const cg = document.getElementById("charGrid");
   cg.innerHTML = "";
   CHARACTERS.forEach((ch, i) => {
@@ -1073,6 +1074,41 @@ function showCharSelect() {
     }, 20);
   });
 
+  // Update NEXT button state
+  updateNextBtn();
+  showScreen("charScreen");
+}
+
+function updateNextBtn() {
+  const btn = document.getElementById("charNextBtn");
+  if (btn) btn.disabled = false; // always enabled since a char is always selected
+}
+
+function goToWeaponSelect() {
+  // Build weapon screen with selected char info
+  const prog = DB.getProgress(currentUser),
+    done = Object.keys(prog).length;
+  const ch = selectedChar;
+
+  // Update weapon screen char info
+  const wsName = document.getElementById("wsCharName");
+  const wsStats = document.getElementById("wsCharStats");
+  const wsCanvas = document.getElementById("wsCharCanvas");
+  const wsCoins = document.getElementById("wsCoinsBalance");
+
+  if (wsName) wsName.textContent = ch.name;
+  if (wsStats)
+    wsStats.innerHTML = ch.stats
+      .map((s) => `<span class="stat-pip">${s}</span>`)
+      .join("");
+  if (wsCoins) wsCoins.textContent = `🪙 ${DB.getCoins(currentUser)} coins`;
+  if (wsCanvas) {
+    const cx = wsCanvas.getContext("2d");
+    cx.imageSmoothingEnabled = true;
+    updateCharPreviewOnCanvas(cx, ch, 120, 160);
+  }
+
+  // Build weapon grid on weapon screen
   const wg = document.getElementById("weaponGrid");
   wg.innerHTML = "";
   WEAPONS.forEach((w) => {
@@ -1081,7 +1117,7 @@ function showCharSelect() {
     const wLocked = levelLocked || coinLocked;
     const card = document.createElement("div");
     card.className =
-      "weapon-card-small" +
+      "weapon-card-big" +
       (selectedWeapon.id === w.id ? " selected" : "") +
       (wLocked ? " locked" : "");
     const wLockMsg = levelLocked
@@ -1090,19 +1126,135 @@ function showCharSelect() {
         ? `🪙 ${w.coinCost}`
         : "";
     card.innerHTML = `
-      <span class="wcs-icon">${w.icon}</span>
-      <div class="wcs-info">
-        <div class="wcs-name">${w.name}</div>
-        <div class="wcs-dmg">DMG ${w.damage} · RNG ${w.range}${wLockMsg ? ` · <span style="color:#ffd23f;font-weight:900">${wLockMsg}</span>` : ""}</div>
-      </div>
+      <div class="wcb-icon">${w.icon}</div>
+      <div class="wcb-name">${w.name}</div>
+      <div class="wcb-stats">DMG ${w.damage} · RNG ${w.range}</div>
+      ${wLockMsg ? `<div class="wcb-lock">${wLockMsg}</div>` : ""}
     `;
-    if (!wLocked) card.onclick = () => selectWeapon(w.id);
+    if (!wLocked) card.onclick = () => selectWeaponAndUpdate(w.id);
     else if (coinLocked) card.onclick = () => buyWeapon(w.id);
     wg.appendChild(card);
   });
 
-  updateCharPreview();
-  showScreen("charScreen");
+  updateLetsGoBtn();
+  showScreen("weaponScreen");
+}
+
+function selectWeaponAndUpdate(id) {
+  selectWeapon(id);
+  // Refresh selected state on weapon cards
+  document.querySelectorAll(".weapon-card-big").forEach((c, i) => {
+    c.classList.toggle("selected", WEAPONS[i]?.id === id);
+  });
+  updateLetsGoBtn();
+}
+
+function updateLetsGoBtn() {
+  const btn = document.getElementById("letsGoBtn");
+  if (btn) btn.disabled = false;
+}
+
+function updateCharPreviewOnCanvas(px, ch, w, h) {
+  px.clearRect(0, 0, w, h);
+  px.imageSmoothingEnabled = true;
+  px.fillStyle = ch.color + "22";
+  px.fillRect(0, 0, w, h);
+  // Shadow
+  px.fillStyle = "rgba(0,0,0,0.2)";
+  px.beginPath();
+  px.ellipse(w / 2, h * 0.97, w * 0.28, h * 0.04, 0, 0, Math.PI * 2);
+  px.fill();
+  // Shoes
+  px.fillStyle = ch.shoe || "#333";
+  px.beginPath();
+  px.ellipse(w * 0.38, h * 0.9, w * 0.14, h * 0.05, 0, 0, Math.PI * 2);
+  px.fill();
+  px.beginPath();
+  px.ellipse(w * 0.62, h * 0.9, w * 0.14, h * 0.05, 0, 0, Math.PI * 2);
+  px.fill();
+  // Pants
+  px.fillStyle = ch.pants;
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.32, h * 0.65, w * 0.15, h * 0.25, 3);
+  else px.rect(w * 0.32, h * 0.65, w * 0.15, h * 0.25);
+  px.fill();
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.53, h * 0.65, w * 0.15, h * 0.25, 3);
+  else px.rect(w * 0.53, h * 0.65, w * 0.15, h * 0.25);
+  px.fill();
+  // Body
+  px.fillStyle = ch.shirt;
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.27, h * 0.38, w * 0.46, h * 0.29, 6);
+  else px.rect(w * 0.27, h * 0.38, w * 0.46, h * 0.29);
+  px.fill();
+  // Arms
+  px.fillStyle = ch.shirt;
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.15, h * 0.4, w * 0.13, h * 0.18, 5);
+  else px.rect(w * 0.15, h * 0.4, w * 0.13, h * 0.18);
+  px.fill();
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.72, h * 0.4, w * 0.13, h * 0.18, 5);
+  else px.rect(w * 0.72, h * 0.4, w * 0.13, h * 0.18);
+  px.fill();
+  // Hands
+  px.fillStyle = ch.skin;
+  px.beginPath();
+  px.arc(w * 0.215, h * 0.6, w * 0.06, 0, Math.PI * 2);
+  px.fill();
+  px.beginPath();
+  px.arc(w * 0.785, h * 0.6, w * 0.06, 0, Math.PI * 2);
+  px.fill();
+  // Neck
+  px.fillStyle = ch.skin;
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.43, h * 0.29, w * 0.13, h * 0.12, 3);
+  else px.rect(w * 0.43, h * 0.29, w * 0.13, h * 0.12);
+  px.fill();
+  // Head
+  px.fillStyle = ch.skin;
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.3, h * 0.1, w * 0.38, h * 0.25, 12);
+  else px.rect(w * 0.3, h * 0.1, w * 0.38, h * 0.25);
+  px.fill();
+  // Hair
+  px.fillStyle = ch.hair;
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.3, h * 0.08, w * 0.38, h * 0.11, 10);
+  else px.rect(w * 0.3, h * 0.08, w * 0.38, h * 0.11);
+  px.fill();
+  // Eyes
+  px.fillStyle = "#fff";
+  px.beginPath();
+  px.ellipse(w * 0.41, h * 0.19, w * 0.06, h * 0.04, 0, 0, Math.PI * 2);
+  px.fill();
+  px.beginPath();
+  px.ellipse(w * 0.57, h * 0.19, w * 0.06, h * 0.04, 0, 0, Math.PI * 2);
+  px.fill();
+  px.fillStyle = "#1a1a2e";
+  px.beginPath();
+  px.arc(w * 0.42, h * 0.19, w * 0.03, 0, Math.PI * 2);
+  px.fill();
+  px.beginPath();
+  px.arc(w * 0.58, h * 0.19, w * 0.03, 0, Math.PI * 2);
+  px.fill();
+  // Smile
+  px.strokeStyle = "#8B3A3A";
+  px.lineWidth = 2;
+  px.beginPath();
+  px.arc(w * 0.5, h * 0.25, w * 0.07, 0.2, Math.PI - 0.2);
+  px.stroke();
+  // Name badge
+  px.fillStyle = ch.color;
+  px.beginPath();
+  if (px.roundRect) px.roundRect(w * 0.15, h * 0.93, w * 0.7, h * 0.06, 3);
+  else px.rect(w * 0.15, h * 0.93, w * 0.7, h * 0.06);
+  px.fill();
+  px.fillStyle = "#fff";
+  px.font = `bold ${Math.round(w * 0.09)}px sans-serif`;
+  px.textAlign = "center";
+  px.fillText(ch.name, w * 0.5, h * 0.97);
 }
 
 function getPlayerCoins() {
@@ -1282,6 +1434,9 @@ function selectWeapon(id) {
 }
 
 function confirmCharWeapon() {
+  showMap();
+}
+function letsGo() {
   showMap();
 }
 
