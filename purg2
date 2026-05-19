@@ -1,6 +1,4 @@
-javascript;
-
-("use strict");
+"use strict";
 
 // ═══════════════════════════════════════════════════════
 //  SUPABASE
@@ -1525,7 +1523,7 @@ function showLevelSelect(ci) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  LEVEL GENERATOR  — FIXED: platform height & gaps
+//  LEVEL GENERATOR  (FIXES 3 & 4 — platform height & gaps)
 // ═══════════════════════════════════════════════════════
 function seededRng(seed) {
   let s = seed >>> 0;
@@ -1590,10 +1588,10 @@ function generateLevel(idx) {
   let cursor = 4;
 
   for (let i = 0, n = 5 + Math.floor(diff * 16); i < n; i++) {
-    // FIX #3: Reduced gap size on early levels so platforms are reachable
+    // FIX 3a: Reduced gap size on early levels so platforms are reachable
     const gap = 1 + Math.floor(rng() * (2 + diff * 3 + chIdx * 0.2)),
       tx = cursor + gap;
-    // FIX #3: Platform height capped on early levels — scales with difficulty
+    // FIX 3b: Platform height capped on early levels — scales with difficulty
     const ty = GROUND_Y - 3 - Math.floor(rng() * (3 + diff * 4)),
       len = 2 + Math.floor(rng() * 4);
     if (tx + len < levelW - 4) {
@@ -1602,8 +1600,7 @@ function generateLevel(idx) {
     }
   }
 
-  // FIX #2: Crumble platforms start from chapter 1, not chapter 0
-  // Also reduced count on Ice Peaks (chapter 2) to prevent lag
+  // FIX 2: Crumble platforms only start from chapter 1, reduced for Ice Peaks (chapter 2)
   if (chIdx >= 1) {
     const numCrumble =
       chIdx === 2 ? 1 + Math.floor(diff * 3) : 2 + Math.floor(diff * 6);
@@ -2142,7 +2139,7 @@ function update() {
     jumpQueued = false;
   } else player.jumpBuffer = Math.max(0, player.jumpBuffer - 1);
   if (player.jumpBuffer > 0 && player.coyoteFrames > 0) {
-    // FIX #4: Increased jump height from -8.6 to -10.2
+    // FIX 4: Increased jump velocity from -8.6 to -10.2 so player can reach platforms
     player.vy = -10.2 * selectedChar.jump;
     player.coyoteFrames = 0;
     player.jumpBuffer = 0;
@@ -2604,12 +2601,19 @@ function draw() {
   }
   ctx.clearRect(0, 0, LW, LH);
 
-  const sg = ctx.createLinearGradient(0, 0, 0, LH);
-  sg.addColorStop(0, ch.sky1);
-  sg.addColorStop(0.6, ch.sky2);
-  sg.addColorStop(1, shadeColor(ch.sky2, -30));
-  ctx.fillStyle = sg;
-  ctx.fillRect(0, 0, LW, LH);
+  // FIX 2 (Ice Peaks lag): Use flat fillRect for sky instead of heavy gradient on light chapters
+  const useFlatSky = levelData.chIdx === 2 || levelData.chIdx === 5;
+  if (useFlatSky) {
+    ctx.fillStyle = ch.sky1;
+    ctx.fillRect(0, 0, LW, LH);
+  } else {
+    const sg = ctx.createLinearGradient(0, 0, 0, LH);
+    sg.addColorStop(0, ch.sky1);
+    sg.addColorStop(0.6, ch.sky2);
+    sg.addColorStop(1, shadeColor(ch.sky2, -30));
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, 0, LW, LH);
+  }
 
   drawBgDecor();
 
@@ -3837,7 +3841,7 @@ function drawBossBar() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  LEADERBOARD — FIX #1: polls every 15s while open
+//  LEADERBOARD  (FIX 1 — polls every 15s while open)
 // ═══════════════════════════════════════════════════════
 async function showLeaderboard(levelIdx) {
   renderLeaderboard(levelIdx, null);
@@ -3863,7 +3867,7 @@ async function showLeaderboard(levelIdx) {
     }
   };
   fetchAndRender();
-  // Poll every 15s while the overlay is still visible
+  // Poll every 15s while overlay is open
   const interval = setInterval(() => {
     const el = document.getElementById("leaderboardOverlay");
     if (!el || el.style.display === "none") {
