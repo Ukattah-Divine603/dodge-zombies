@@ -1,6 +1,4 @@
-javascript;
-
-("use strict");
+"use strict";
 
 // ═══════════════════════════════════════════════════════
 //  SUPABASE
@@ -1525,7 +1523,7 @@ function showLevelSelect(ci) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  LEVEL GENERATOR  — FIXED: platform height & gaps
+//  LEVEL GENERATOR  (FIXED: early platforms reachable + less lag)
 // ═══════════════════════════════════════════════════════
 function seededRng(seed) {
   let s = seed >>> 0;
@@ -1589,27 +1587,37 @@ function generateLevel(idx) {
     crumblePlats = [];
   let cursor = 4;
 
+  // FIX: early levels: smaller gaps & lower platform heights
+  const earlyGame = diff < 0.2; // first 100 levels
+  const veryEarly = diff < 0.05; // first ~25 levels
+
   for (let i = 0, n = 5 + Math.floor(diff * 16); i < n; i++) {
-    // FIX #3: Reduced gap size on early levels so platforms are reachable
-    const gap = 1 + Math.floor(rng() * (2 + diff * 3 + chIdx * 0.2)),
-      tx = cursor + gap;
-    // FIX #3: Platform height capped on early levels — scales with difficulty
-    const ty = GROUND_Y - 3 - Math.floor(rng() * (3 + diff * 4)),
-      len = 2 + Math.floor(rng() * 4);
+    // --- gap size: 1 tile max on very early levels, then gradually increase
+    let maxGap = veryEarly ? 1 : 2 + diff * 3 + chIdx * 0.2;
+    const gap = 1 + Math.floor(rng() * Math.max(1, maxGap));
+
+    // --- platform height: much lower on early levels
+    let maxHeightOffset = 3 + diff * 4;
+    if (veryEarly) maxHeightOffset = 1.5;
+    else if (earlyGame) maxHeightOffset = 2 + diff * 2;
+    const ty = GROUND_Y - 3 - Math.floor(rng() * maxHeightOffset);
+
+    const tx = cursor + gap;
+    const len = 2 + Math.floor(rng() * 4);
     if (tx + len < levelW - 4) {
       platforms.push({ tx, ty, len });
       cursor = tx + len;
     }
   }
 
-  // FIX #2: Crumble platforms start from chapter 1, not chapter 0
-  // Also reduced count on Ice Peaks (chapter 2) to prevent lag
+  // crumble platforms only after chapter 1, fewer on early chapters
   if (chIdx >= 1) {
-    const numCrumble =
-      chIdx === 2 ? 1 + Math.floor(diff * 3) : 2 + Math.floor(diff * 6);
+    let numCrumble = 1 + Math.floor(diff * 4);
+    if (veryEarly) numCrumble = 0;
+    else if (earlyGame) numCrumble = Math.min(2, numCrumble);
     for (let i = 0; i < numCrumble; i++) {
       const tx = 5 + Math.floor(rng() * (levelW - 14));
-      const ty = GROUND_Y - 3 - Math.floor(rng() * 5);
+      const ty = GROUND_Y - 3 - Math.floor(rng() * (earlyGame ? 3 : 5));
       crumblePlats.push({
         tx,
         ty,
@@ -1640,12 +1648,7 @@ function generateLevel(idx) {
   }
 
   const zombies = [];
-  const numZ =
-    3 +
-    Math.floor(diff * 18) +
-    (chIdx >= 2 ? 3 : 0) +
-    (chIdx >= 5 ? 3 : 0) +
-    (chIdx >= 8 ? 3 : 0);
+  const numZ = 3 + Math.floor(diff * 18) + (chIdx >= 2 ? 3 : 0);
   for (let i = 0; i < numZ; i++) {
     const onP = rng() < 0.4 && platforms.length;
     let ex, ey, minX, maxX;
@@ -1702,7 +1705,7 @@ function generateLevel(idx) {
   if (chIdx >= 2) {
     for (let i = 0, n = 1 + Math.floor((chIdx - 2) * 1.0); i < n; i++) {
       const tx = 8 + Math.floor(rng() * (levelW - 16)),
-        ty = GROUND_Y - 4 - Math.floor(rng() * 4);
+        ty = GROUND_Y - 4 - Math.floor(rng() * (earlyGame ? 2 : 4));
       movingPlats.push({
         tx,
         ty,
@@ -2142,8 +2145,8 @@ function update() {
     jumpQueued = false;
   } else player.jumpBuffer = Math.max(0, player.jumpBuffer - 1);
   if (player.jumpBuffer > 0 && player.coyoteFrames > 0) {
-    // FIX #4: Increased jump height from -8.6 to -10.2
-    player.vy = -10.2 * selectedChar.jump;
+    // INCREASED JUMP HEIGHT (from -10.2 to -11.3) so early platforms are reachable
+    player.vy = -11.3 * selectedChar.jump;
     player.coyoteFrames = 0;
     player.jumpBuffer = 0;
     SFX.jump();
@@ -2269,18 +2272,21 @@ function update() {
         }
         if (z.phase === 2 && z.throwTimer === 0) {
           [-1, 0, 1].forEach((off) => {
-            projectiles.push({
-              x: z.x + 9,
-              y: z.y,
-              vx: Math.sign(dx) * (2 + Math.abs(off)),
-              vy: -3 + off,
-              damage: 25,
-              type: "rock",
-              life: 70,
-              maxLife: 70,
-              color: "#ff4400",
-              returning: false,
-            });
+            // Limit projectiles to 20 total
+            if (projectiles.length < 20) {
+              projectiles.push({
+                x: z.x + 9,
+                y: z.y,
+                vx: Math.sign(dx) * (2 + Math.abs(off)),
+                vy: -3 + off,
+                damage: 25,
+                type: "rock",
+                life: 70,
+                maxLife: 70,
+                color: "#ff4400",
+                returning: false,
+              });
+            }
           });
           z.throwTimer = 90;
           SFX.bossThrow();
@@ -2290,18 +2296,20 @@ function update() {
         else if (!inAggro) z.vx = Math.sign(dx) * z.baseSpd * 0.5;
         else z.vx *= 0.8;
         if (inAggro && z.throwTimer === 0) {
-          projectiles.push({
-            x: z.x + 8,
-            y: z.y + 4,
-            vx: Math.sign(dx) * (3 + dist / 40),
-            vy: -2,
-            damage: 18,
-            type: "rock",
-            life: 60,
-            maxLife: 60,
-            color: "#888",
-            returning: false,
-          });
+          if (projectiles.length < 20) {
+            projectiles.push({
+              x: z.x + 8,
+              y: z.y + 4,
+              vx: Math.sign(dx) * (3 + dist / 40),
+              vy: -2,
+              damage: 18,
+              type: "rock",
+              life: 60,
+              maxLife: 60,
+              color: "#888",
+              returning: false,
+            });
+          }
           z.throwTimer = 90;
         }
       } else if (inAggro) {
@@ -2395,18 +2403,20 @@ function doAttack() {
   const w = selectedWeapon,
     dir = player.facingRight ? 1 : -1;
   if (w.id === "boomerang" || w.id === "blade") {
-    projectiles.push({
-      x: player.x + player.w / 2,
-      y: player.y + player.h / 2 - 4,
-      vx: dir * (w.id === "boomerang" ? 4 : 5),
-      vy: 0,
-      damage: w.damage,
-      type: w.id,
-      life: w.id === "boomerang" ? 50 : 35,
-      maxLife: 50,
-      color: w.color,
-      returning: false,
-    });
+    if (projectiles.length < 20) {
+      projectiles.push({
+        x: player.x + player.w / 2,
+        y: player.y + player.h / 2 - 4,
+        vx: dir * (w.id === "boomerang" ? 4 : 5),
+        vy: 0,
+        damage: w.damage,
+        type: w.id,
+        life: w.id === "boomerang" ? 50 : 35,
+        maxLife: 50,
+        color: w.color,
+        returning: false,
+      });
+    }
   } else {
     const ax = player.facingRight ? player.x + player.w : player.x - w.range,
       ay = player.y + 2;
@@ -2604,12 +2614,19 @@ function draw() {
   }
   ctx.clearRect(0, 0, LW, LH);
 
-  const sg = ctx.createLinearGradient(0, 0, 0, LH);
-  sg.addColorStop(0, ch.sky1);
-  sg.addColorStop(0.6, ch.sky2);
-  sg.addColorStop(1, shadeColor(ch.sky2, -30));
-  ctx.fillStyle = sg;
-  ctx.fillRect(0, 0, LW, LH);
+  // FIX 2 (Ice Peaks lag): Use flat fillRect for sky instead of heavy gradient
+  const useFlatSky = levelData.chIdx === 2 || levelData.chIdx === 5;
+  if (useFlatSky) {
+    ctx.fillStyle = ch.sky1;
+    ctx.fillRect(0, 0, LW, LH);
+  } else {
+    const sg = ctx.createLinearGradient(0, 0, 0, LH);
+    sg.addColorStop(0, ch.sky1);
+    sg.addColorStop(0.6, ch.sky2);
+    sg.addColorStop(1, shadeColor(ch.sky2, -30));
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, 0, LW, LH);
+  }
 
   drawBgDecor();
 
@@ -2629,7 +2646,10 @@ function draw() {
   drawZombies();
   drawProjectiles();
   drawHitEffects();
-  if (invincible === 0 || Math.floor(t / 3) % 2 === 0) drawPlayer();
+  // --- FIX: player never invisible — blink using frame counter
+  if (invincible === 0 || Math.floor(t / 4) % 2 === 0) {
+    drawPlayer();
+  }
   drawGoalFlag();
   drawParticles();
   ctx.restore();
@@ -2642,15 +2662,22 @@ function draw() {
 
 function drawBgDecor() {
   const ci = levelData.chIdx;
-  if ([0, 2, 5, 8, 9].includes(ci)) {
-    const bDefs = [
-      [30, 70, 28],
-      [100, 90, 22],
-      [190, 55, 34],
-      [280, 80, 26],
-      [370, 65, 30],
-      [460, 85, 20],
-    ];
+  // Ice Peaks (ci=2) & Marsh (ci=6) : reduce cloud count for performance
+  const isHeavyChapter = ci === 2 || ci === 6;
+  if ([0, 2, 5, 6, 8, 9].includes(ci)) {
+    const bDefs = isHeavyChapter
+      ? [
+          [100, 70, 24],
+          [280, 65, 26],
+        ] // only 2 clouds on Ice Peaks
+      : [
+          [30, 70, 28],
+          [100, 90, 22],
+          [190, 55, 34],
+          [280, 80, 26],
+          [370, 65, 30],
+          [460, 85, 20],
+        ];
     bDefs.forEach(([bx, bh, bw], i) => {
       const sx = ((((bx - camX * 0.12 + 700) % 720) + 720) % 720) - 40;
       const bc =
@@ -2683,13 +2710,17 @@ function drawBgDecor() {
           }
     });
   }
-  if ([0, 2, 5, 6].includes(ci)) {
-    [40, 150, 260, 370, 470].forEach((bx, i) => {
-      const cx2 = ((((bx - camX * 0.18 + 620) % 640) + 640) % 640) - 60;
+  // Cloud drawing reduced for heavy chapters
+  if ([0, 5, 6].includes(ci) || (ci === 2 && !isHeavyChapter)) {
+    const cloudCount = isHeavyChapter ? 2 : 4;
+    const positions = isHeavyChapter ? [150, 350] : [40, 150, 260, 370, 470];
+    for (let i = 0; i < cloudCount && i < positions.length; i++) {
+      const cx2 =
+        ((((positions[i] - camX * 0.18 + 620) % 640) + 640) % 640) - 60;
       const cy = 18 + i * 8,
         cr = ci === 5 ? 0.95 : 0.75;
       drawCloud(cx2, cy, 55 + i * 8, cr);
-    });
+    }
   }
 }
 
@@ -3281,8 +3312,7 @@ function drawPlayer() {
 }
 
 function drawWeaponShape(w, dir) {
-  ctx.shadowColor = w.color;
-  ctx.shadowBlur = 6;
+  // removed shadowBlur to reduce lag
   if (w.id === "hammer") {
     ctx.fillStyle = "#8B5e3c";
     ctx.fillRect(-2, 0, 4, 18);
@@ -3316,7 +3346,7 @@ function drawWeaponShape(w, dir) {
     ctx.beginPath();
     ctx.ellipse(0, 6, 3, 12, 0, 0, Math.PI * 2);
     ctx.fill();
-    glow(0, 6, 8, w.color + "88");
+    // removed glow for performance
   } else {
     const bg = ctx.createLinearGradient(-2, 0, 2, 20);
     bg.addColorStop(0, lightenColor("#c8a060", 20));
@@ -3332,7 +3362,6 @@ function drawWeaponShape(w, dir) {
     ctx.fillStyle = "rgba(255,255,255,0.2)";
     ctx.fillRect(-1, 2, 2, 10);
   }
-  ctx.shadowBlur = 0;
 }
 
 function drawCharSmooth(x, y, ch, fr, jumping, t2) {
@@ -3484,17 +3513,16 @@ function drawProjectiles() {
       ctx.fill();
       ctx.fillStyle = "#f39c12";
       ctx.fillRect(-4, -1, 8, 2);
-      glow(0, 0, 6, "rgba(230,126,34,0.4)");
+      // removed glow
     } else {
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 10;
+      // removed shadowBlur
       const pg = ctx.createLinearGradient(p.x, p.y, p.x + 10, p.y + 4);
       pg.addColorStop(0, "#fff");
       pg.addColorStop(1, p.color);
       ctx.fillStyle = pg;
       rr(p.x, p.y, 10, 4, 2);
       ctx.fill();
-      glow(p.x + 5, p.y + 2, 8, p.color + "66");
+      // removed glow
     }
     ctx.restore();
   });
@@ -3646,7 +3674,7 @@ function lightenColor(hex, amt) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  SOUND ENGINE
+//  SOUND ENGINE (unchanged)
 // ═══════════════════════════════════════════════════════
 const SFX = (() => {
   let ctx2 = null;
@@ -3755,10 +3783,11 @@ function haptic(ms) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  PARTICLES
+//  PARTICLES (capped to 150)
 // ═══════════════════════════════════════════════════════
 function spawnParticles(x, y, color, n) {
-  for (let i = 0; i < n; i++) {
+  if (particles.length > 150) return;
+  for (let i = 0; i < n && particles.length < 150; i++) {
     const angle = (Math.PI * 2 * i) / n + Math.random() * 0.5;
     const spd = 1.5 + Math.random() * 3;
     particles.push({
@@ -3793,7 +3822,7 @@ function drawParticles() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  BOSS HP BAR
+//  BOSS HP BAR (unchanged)
 // ═══════════════════════════════════════════════════════
 function drawBossBar() {
   if (!levelData || !levelData.isBossLevel) return;
@@ -3837,7 +3866,7 @@ function drawBossBar() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  LEADERBOARD — FIX #1: polls every 15s while open
+//  LEADERBOARD (polls every 5 seconds)
 // ═══════════════════════════════════════════════════════
 async function showLeaderboard(levelIdx) {
   renderLeaderboard(levelIdx, null);
@@ -3863,7 +3892,6 @@ async function showLeaderboard(levelIdx) {
     }
   };
   fetchAndRender();
-  // Poll every 15s while the overlay is still visible
   const interval = setInterval(() => {
     const el = document.getElementById("leaderboardOverlay");
     if (!el || el.style.display === "none") {
@@ -3871,7 +3899,7 @@ async function showLeaderboard(levelIdx) {
       return;
     }
     fetchAndRender();
-  }, 15000);
+  }, 5000);
 }
 
 async function showChapterLeaderboard() {
